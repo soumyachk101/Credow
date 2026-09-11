@@ -1,0 +1,22 @@
+{
+  "name": "algorand-starter-kitchensink",
+  "private": true,
+  "workspaces": [
+    "contracts",
+    "app",
+    "subscriber"
+  ],
+  "engines": {
+    "node": ">=24.0"
+  },
+  "scripts": {
+    "build": "npm -w @repo/contracts run build",
+    "dev": "npm run build && npm -w @repo/app run dev",
+    "dev:subscriber": "npm -w @repo/subscriber run dev",
+    "deploy": "npm run build && npm -w @repo/contracts run deploy",
+    "deploy:testnet": "npm run build && npm -w @repo/contracts run deploy:testnet",
+    "deploy:mainnet": "npm run build && npm -w @repo/contracts run deploy:mainnet",
+    "test": "npm -w @repo/contracts run test",
+    "check-types": "npm --workspaces run check-types"
+  }
+}

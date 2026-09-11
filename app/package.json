@@ -1,0 +1,35 @@
+{
+  "name": "@repo/app",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@algorandfoundation/algokit-utils": "9.2.0",
+    "@repo/contracts": "*",
+    "@txnlab/use-wallet-react": "^4.0.1",
+    "@txnlab/use-wallet-ui-react": "^1.0.0",
+    "algosdk": "3.7.0",
+    "lucide-react": "^1.45.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^7.18.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.0",
+    "@types/react": "^19.2.8",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tailwindcss": "^4.0.17",
+    "typescript": "^5.7.3",
+    "vite": "^6.2.0",
+    "vite-plugin-node-polyfills": "^0.26.0"
+  }
+}
