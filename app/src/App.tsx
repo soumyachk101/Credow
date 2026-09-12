@@ -63,25 +63,11 @@ const walletManager = new WalletManager({
 })
 
 export default function App() {
- const [theme, setTheme] = useState<Theme>('system')
+ const [theme] = useState<Theme>('dark')
 
  useEffect(() => {
- const root = document.documentElement
-
- if (theme === 'dark') {
- root.classList.add('dark')
- } else if (theme === 'light') {
- root.classList.remove('dark')
- } else {
- const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
- const handler = (e: MediaQueryListEvent) => {
- root.classList.toggle('dark', e.matches)
- }
- root.classList.toggle('dark', mediaQuery.matches)
- mediaQuery.addEventListener('change', handler)
- return () => mediaQuery.removeEventListener('change', handler)
- }
- }, [theme])
+ document.documentElement.classList.add('dark')
+ }, [])
 
  return (
  <WalletProvider manager={walletManager}>

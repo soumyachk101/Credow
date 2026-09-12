@@ -17,6 +17,7 @@ import {
  Clock,
  ArrowRight,
  ChevronDown,
+ ExternalLink,
 } from 'lucide-react'
 import { useWallet } from '@txnlab/use-wallet-react'
 import { WalletButton } from '@txnlab/use-wallet-ui-react'
@@ -372,27 +373,36 @@ export default function Claims() {
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold text-white tracking-tight" style={{ fontFamily: "'Instrument Serif', serif" }}>
-            Claims & x402 Payments
-          </h1>
-          <p className="text-white/40 mt-1 text-sm">
-            Claim credits for service consumption and settle payments on Algorand via the x402 protocol
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+              Claims & x402 Payments
+            </h1>
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">
+              Algorand TestNet
+            </span>
+          </div>
+          <p className="text-zinc-400 mt-1 text-sm">
+            Claim credits for service consumption and settle payments on Algorand via the x402 protocol.
           </p>
         </div>
 
-        <div className="flex items-center gap-1 p-1 bg-white/5 border border-white/10 rounded-full self-start">
+        <div className="flex items-center gap-1 p-1 bg-white/[0.03] border border-white/10 rounded-xl self-start">
           <button
             onClick={() => setViewMode('employee')}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors ${
-              viewMode === 'employee' ? 'bg-white text-black font-semibold' : 'text-white/60 hover:text-white'
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              viewMode === 'employee'
+                ? 'bg-emerald-500 text-black shadow-[0_0_12px_rgba(16,185,129,0.3)]'
+                : 'text-zinc-400 hover:text-white'
             }`}
           >
             Employee Claims
           </button>
           <button
             onClick={() => setViewMode('management')}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors ${
-              viewMode === 'management' ? 'bg-white text-black font-semibold' : 'text-white/60 hover:text-white'
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              viewMode === 'management'
+                ? 'bg-emerald-500 text-black shadow-[0_0_12px_rgba(16,185,129,0.3)]'
+                : 'text-zinc-400 hover:text-white'
             }`}
           >
             Management View
@@ -484,12 +494,15 @@ function EmployeeView({ allocations, records, onPay, teams }: any) {
  <div className="text-right">
  <p className="text-sm text-white/70">{fmtCurrency(a.claimed_credits)} claimed</p>
  <p className="text-xs text-white/40">{fmtCurrency(a.unclaimed_credits)} unclaimed</p>
+              {a.unclaimed_credits > 0 && (
+                <button
+                  onClick={() => onPay(a)}
+                  className="mt-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-semibold shadow-[0_0_12px_rgba(16,185,129,0.25)] transition-all"
+                >
+                  <Zap className="w-3.5 h-3.5" /> Pay
+                </button>
+              )}
  </div>
- {a.unclaimed_credits > 0 && (
- <button onClick={() => onPay(a)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-black text-xs font-medium hover:bg-white/90 transition-colors">
- <Zap className="w-3.5 h-3.5" /> Pay
- </button>
- )}
  </div>
  </div>
  )
@@ -566,11 +579,14 @@ function ManagementView({ allocations, employees, teams, records, onPay, walletB
  <td className="px-4 py-3 text-sm text-white/60">{fmtCurrency(claimed)}</td>
  <td className="px-4 py-3 text-sm text-white/80">{fmtCurrency(unclaimed)}</td>
  <td className="px-4 py-3 text-right">
- {unclaimed > 0 && firstAlloc && (
- <button onClick={() => onPay(firstAlloc)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-white text-black text-xs font-medium hover:bg-white/90 transition-colors">
- <Zap className="w-3.5 h-3.5" /> Pay
- </button>
- )}
+              {unclaimed > 0 && firstAlloc && (
+                <button
+                  onClick={() => onPay(firstAlloc)}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-semibold shadow-[0_0_12px_rgba(16,185,129,0.25)] transition-all"
+                >
+                  <Zap className="w-3.5 h-3.5" /> Pay
+                </button>
+              )}
  </td>
  </tr>
  )
@@ -634,11 +650,11 @@ function PaymentModal({ allocation, service, amount, status, txHash, error, load
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="liquid-glass rounded-2xl max-w-lg w-full">
         <div className="p-6 border-b border-white/5">
-          <h3 className="text-lg font-medium text-white flex items-center gap-2">
-            <Zap className="w-5 h-5 text-yellow-400" />
+          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+            <Zap className="w-5 h-5 text-emerald-400" />
             x402 Payment Settlement
           </h3>
-          <p className="text-xs text-white/40 mt-1">Pay for API services using x402 on Algorand (USDC ASA transfer)</p>
+          <p className="text-xs text-zinc-400 mt-1">Pay for API services using x402 on Algorand (USDC ASA transfer)</p>
         </div>
         <div className="p-6 space-y-4">        {status === 'idle' && (
           <>
@@ -654,8 +670,8 @@ function PaymentModal({ allocation, service, amount, status, txHash, error, load
             <div>
               <label className="block text-xs font-medium text-white/50 mb-1.5 uppercase tracking-wider">Service</label>
               <select value={service} onChange={e => onServiceChange(e.target.value)} className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/5 text-white text-sm focus:outline-none focus:border-white/20">
-                <option value="" className="bg-slate-900">Select service</option>
-                {SERVICES.map(s => <option key={s.id} value={s.id} className="bg-slate-900">{s.name} — ${s.cost}</option>)}
+                <option value="" className="bg-[#0B0D13]">Select service</option>
+                {SERVICES.map(s => <option key={s.id} value={s.id} className="bg-[#0B0D13]">{s.name} — ${s.cost}</option>)}
               </select>
             </div>
             <div>
@@ -718,14 +734,14 @@ function PaymentModal({ allocation, service, amount, status, txHash, error, load
               )}
             </div>
             {activeAddress && (!walletBalance || walletBalance.usdc < parseFloat(amount || '0')) && (
-              <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3.5 space-y-2">
+              <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold text-amber-300">Insufficient USDC for payment</p>
-                  <span className="text-[11px] font-mono text-amber-300/80">
-                    Need: {formatCurrency(parseFloat(amount || '0'))} | Have: {formatCurrency(walletBalance?.usdc || 0)}
+                  <p className="text-xs font-semibold text-emerald-300">TestNet USDC Balance Required</p>
+                  <span className="text-[11px] font-mono text-zinc-400">
+                    Need: <strong className="text-white">{formatCurrency(parseFloat(amount || '0'))}</strong> | Have: <strong className="text-emerald-400">{formatCurrency(walletBalance?.usdc || 0)}</strong>
                   </span>
                 </div>
-                <p className="text-[11px] text-amber-400/80">
+                <p className="text-[11px] text-zinc-400 leading-relaxed">
                   Real on-chain x402 settlement requires TestNet USDC (ASA {USDC_ASSET_ID.toLocaleString()}).
                   {!walletBalance?.isOptedIn && " Your wallet must first opt into ASA 10,458,941."}
                 </p>
@@ -734,7 +750,7 @@ function PaymentModal({ allocation, service, amount, status, txHash, error, load
                     <button
                       onClick={onFaucet}
                       disabled={faucetLoading}
-                      className="px-3 py-1.5 bg-amber-500/20 text-amber-200 text-xs font-medium rounded-lg hover:bg-amber-500/30 disabled:opacity-50 transition-colors inline-flex items-center gap-1.5"
+                      className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-semibold rounded-lg shadow-[0_0_15px_rgba(16,185,129,0.3)] disabled:opacity-50 transition-all inline-flex items-center gap-1.5"
                     >
                       {faucetLoading ? 'Signing Opt-in...' : 'Step 1: Opt-in to USDC ASA'}
                     </button>
@@ -743,28 +759,31 @@ function PaymentModal({ allocation, service, amount, status, txHash, error, load
                     href="https://lora.algokit.io/testnet/fund"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-3 py-1.5 bg-blue-500/20 text-blue-200 text-xs font-medium rounded-lg hover:bg-blue-500/30 transition-colors inline-flex items-center gap-1"
+                    className="px-3 py-1.5 bg-white/[0.05] hover:bg-white/[0.1] text-white/90 border border-white/10 hover:border-emerald-500/30 text-xs font-medium rounded-lg transition-all inline-flex items-center gap-1.5"
                   >
-                    Get ALGO Gas (Dispenser) ↗
+                    <span>Get ALGO Gas (Dispenser)</span>
+                    <ExternalLink className="w-3 h-3 text-zinc-400" />
                   </a>
                   <a
                     href="https://testnet.tinyman.org"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-3 py-1.5 bg-purple-500/20 text-purple-200 text-xs font-medium rounded-lg hover:bg-purple-500/30 transition-colors inline-flex items-center gap-1"
+                    className="px-3 py-1.5 bg-white/[0.05] hover:bg-white/[0.1] text-white/90 border border-white/10 hover:border-emerald-500/30 text-xs font-medium rounded-lg transition-all inline-flex items-center gap-1.5"
                   >
-                    Swap ALGO for USDC (Tinyman) ↗
+                    <span>Swap ALGO for USDC (Tinyman)</span>
+                    <ExternalLink className="w-3 h-3 text-zinc-400" />
                   </a>
                   <a
                     href={`https://testnet.explorer.algorand.org/address/${activeAddress}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-3 py-1.5 bg-white/10 text-white/80 text-xs font-medium rounded-lg hover:bg-white/20 transition-colors inline-flex items-center gap-1"
+                    className="px-3 py-1.5 bg-white/[0.05] hover:bg-white/[0.1] text-white/90 border border-white/10 hover:border-emerald-500/30 text-xs font-medium rounded-lg transition-all inline-flex items-center gap-1.5"
                   >
-                    View on Explorer ↗
+                    <span>View on Explorer</span>
+                    <ExternalLink className="w-3 h-3 text-zinc-400" />
                   </a>
                 </div>
-                {faucetStatus && <p className="text-xs text-amber-400/80 mt-1 font-mono">{faucetStatus}</p>}
+                {faucetStatus && <p className="text-xs text-emerald-400/90 mt-1 font-mono">{faucetStatus}</p>}
               </div>
             )}
             {error && <div className="p-3 bg-red-500/10 border border-red-500/10 rounded-xl"><p className="text-sm text-red-300">{error}</p></div>}
@@ -830,15 +849,20 @@ function PaymentModal({ allocation, service, amount, status, txHash, error, load
             <button onClick={onClose} className="px-4 py-2 text-sm text-white/60 hover:text-white transition-colors">Cancel</button>
           )}
           {status === 'success' && (
-            <button onClick={onClose} className="px-5 py-2 rounded-full bg-white text-black text-sm font-medium hover:bg-white/90 transition-colors">Done</button>
+            <button
+              onClick={onClose}
+              className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-semibold shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-all"
+            >
+              Done
+            </button>
           )}
           {status === 'idle' && (
             <button
               onClick={onPay}
               disabled={!service || !amount || loading || !activeAddress}
-              className="px-5 py-2 rounded-full bg-white text-black text-sm font-medium hover:bg-white/90 disabled:opacity-30 transition-colors inline-flex items-center gap-2"
+              className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-semibold shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_25px_rgba(16,185,129,0.5)] disabled:opacity-30 transition-all inline-flex items-center gap-2"
             >
-              <Zap className="w-4 h-4" /> {loading ? 'Submitting On-Chain...' : !activeAddress ? 'Connect Wallet First' : 'Pay with x402 (On-Chain)'}
+              <Zap className="w-4 h-4 fill-current" /> {loading ? 'Submitting On-Chain...' : !activeAddress ? 'Connect Wallet First' : 'Pay with x402 (On-Chain)'}
             </button>
           )}
         </div>

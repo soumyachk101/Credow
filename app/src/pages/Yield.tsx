@@ -78,16 +78,25 @@ export default function Yield() {
  return (
  <div className="space-y-8">
  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
- <div>
- <h1 className="text-3xl font-semibold text-white tracking-tight" style={{ fontFamily: "'Instrument Serif', serif" }}>
- Yield Management
- </h1>
- <p className="text-white/40 mt-1 text-sm">Track and distribute yield from unclaimed credit allocations</p>
- </div>
- <button onClick={handleDistributeYield} disabled={distributing || yieldAccounts.length === 0} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-black text-sm font-medium hover:bg-white/90 disabled:opacity-30 transition-colors">
- {distributing ? <><RefreshCw className="w-4 h-4 animate-spin" /> Distributing...</> : <><TrendingUp className="w-4 h-4" /> Distribute Yield</>}
- </button>
- </motion.div>
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+              Yield Vault
+            </h1>
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">
+              AVM DeFi Engine
+            </span>
+          </div>
+          <p className="text-zinc-400 mt-1 text-sm">Track and distribute automated yield from unclaimed corporate credit pools.</p>
+        </div>
+        <button
+          onClick={handleDistributeYield}
+          disabled={distributing || yieldAccounts.length === 0}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-semibold shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_25px_rgba(16,185,129,0.5)] disabled:opacity-30 transition-all"
+        >
+          {distributing ? <><RefreshCw className="w-4 h-4 animate-spin" /> Distributing...</> : <><TrendingUp className="w-4 h-4" /> Distribute Yield</>}
+        </button>
+      </motion.div>
 
  {success && (
  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="liquid-glass rounded-2xl p-4 flex items-center gap-3 border border-green-500/20">
@@ -124,20 +133,20 @@ export default function Yield() {
  <span className="text-white/50">{fmt(total)}</span>
  </div>
  <div className="flex h-6 rounded-xl overflow-hidden bg-white/5">
- <div className="bg-white/30 transition-all" style={{ width: `${principalWidth}%` }} title={`Principal: ${fmt(item.principal)}`} />
- <div className="bg-white/70 transition-all" style={{ width: `${yieldWidth}%` }} title={`Yield: ${fmt(item.yield)}`} />
+ <div className="bg-white/20 transition-all" style={{ width: `${principalWidth}%` }} title={`Principal: ${fmt(item.principal)}`} />
+ <div className="bg-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.4)] transition-all" style={{ width: `${yieldWidth}%` }} title={`Yield: ${fmt(item.yield)}`} />
  </div>
- <div className="flex justify-between text-xs text-white/30">
+ <div className="flex justify-between text-xs text-zinc-500 font-mono">
  <span>Principal: {fmt(item.principal)}</span>
- <span>Yield: {fmt(item.yield)}</span>
+ <span className="text-emerald-400">Yield: {fmt(item.yield)}</span>
  </div>
  </div>
  )
  })}
  </div>
  <div className="flex gap-6 mt-4">
- <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-white/30" /><span className="text-xs text-white/30">Principal</span></div>
- <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-white/70" /><span className="text-xs text-white/30">Yield</span></div>
+ <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-white/30" /><span className="text-xs text-zinc-400">Principal</span></div>
+ <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.5)]" /><span className="text-xs text-emerald-400 font-medium">Yield Earned</span></div>
  </div>
  </div>
  )}
@@ -172,11 +181,11 @@ export default function Yield() {
  </div>
  </td>
  <td className="px-6 py-4 text-sm text-white/60">{ya.teamName}</td>
- <td className="px-6 py-4 text-sm text-white/90">{fmt(ya.principal)}</td>
- <td className="px-6 py-4 text-sm font-medium text-white/80">{fmt(ya.yield_generated)}</td>
- <td className="px-6 py-4 text-sm text-white/60">{fmt(ya.company_share)}</td>
- <td className="px-6 py-4 text-sm text-white/80">{fmt(ya.employee_share)}</td>
- <td className="px-6 py-4 text-sm text-white/60">{ya.apy.toFixed(2)}%</td>
+ <td className="px-6 py-4 text-sm font-mono text-zinc-300">{fmt(ya.principal)}</td>
+ <td className="px-6 py-4 text-sm font-mono font-semibold text-emerald-400">{fmt(ya.yield_generated)}</td>
+ <td className="px-6 py-4 text-sm font-mono text-zinc-400">{fmt(ya.company_share)}</td>
+ <td className="px-6 py-4 text-sm font-mono text-emerald-300">{fmt(ya.employee_share)}</td>
+ <td className="px-6 py-4 text-sm font-mono text-emerald-400 font-semibold">{ya.apy.toFixed(2)}%</td>
  </tr>
  ))}
  </tbody>

@@ -93,21 +93,32 @@ export default function Employees() {
  return (
  <div className="space-y-6">
  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
- <div>
- <h1 className="text-3xl font-semibold text-white tracking-tight" style={{ fontFamily: "'Instrument Serif', serif" }}>
- Employees
- </h1>
- <p className="text-white/40 mt-1 text-sm">{activeCount} active members across {teams.length} teams</p>
- </div>
- <div className="flex gap-2">
- <button onClick={() => { setEditingId(null); setForm({ name: '', email: '', role: 'member', team_id: '', wallet_address: '' }); setShowModal(true) }} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white text-black text-sm font-medium hover:bg-white/90 transition-colors">
- <Plus className="w-4 h-4" /> Add Employee
- </button>
- <button onClick={() => setShowInvite(!showInvite)} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 text-white text-sm font-medium hover:bg-white/10 transition-colors border border-white/10">
- <UserPlus className="w-4 h-4" /> Invite
- </button>
- </div>
- </motion.div>
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+              Personnel Directory
+            </h1>
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">
+              {activeCount} Active
+            </span>
+          </div>
+          <p className="text-zinc-400 mt-1 text-sm">{activeCount} active members across {teams.length} teams.</p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => { setEditingId(null); setForm({ name: '', email: '', role: 'member', team_id: '', wallet_address: '' }); setShowModal(true) }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-semibold shadow-[0_0_15px_rgba(16,185,129,0.25)] transition-all"
+          >
+            <Plus className="w-4 h-4" /> Add Employee
+          </button>
+          <button
+            onClick={() => setShowInvite(!showInvite)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-white text-xs font-medium border border-white/10 hover:border-emerald-500/30 transition-all"
+          >
+            <UserPlus className="w-4 h-4" /> Invite
+          </button>
+        </div>
+      </motion.div>
 
  {showInvite && (
  <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="liquid-glass rounded-2xl p-5">
@@ -139,13 +150,13 @@ export default function Employees() {
  />
  </div>
  <div className="flex gap-2">
- <select value={filterTeam} onChange={e => setFilterTeam(e.target.value)} className="px-3 py-2 rounded-xl bg-white/5 border border-white/5 text-white text-sm focus:outline-none focus:border-white/20">
- <option value="" className="bg-slate-900">All Teams</option>
- {teamList.map(t => <option key={t.id} value={t.id} className="bg-slate-900">{t.name}</option>)}
+ <select value={filterTeam} onChange={e => setFilterTeam(e.target.value)} className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-emerald-500/40">
+ <option value="" className="bg-[#0B0D13]">All Teams</option>
+ {teamList.map(t => <option key={t.id} value={t.id} className="bg-[#0B0D13]">{t.name}</option>)}
  </select>
- <select value={filterRole} onChange={e => setFilterRole(e.target.value)} className="px-3 py-2 rounded-xl bg-white/5 border border-white/5 text-white text-sm focus:outline-none focus:border-white/20">
- <option value="" className="bg-slate-900">All Roles</option>
- {ROLE_OPTIONS.map(r => <option key={r} value={r} className="bg-slate-900 capitalize">{r.replace('_', ' ')}</option>)}
+ <select value={filterRole} onChange={e => setFilterRole(e.target.value)} className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-emerald-500/40">
+ <option value="" className="bg-[#0B0D13]">All Roles</option>
+ {ROLE_OPTIONS.map(r => <option key={r} value={r} className="bg-[#0B0D13] capitalize">{r.replace('_', ' ')}</option>)}
  </select>
  </div>
  </div>
@@ -178,12 +189,12 @@ export default function Employees() {
  </td>
  <td className="px-6 py-4 text-sm text-white/60">{team?.name || '-'}</td>
  <td className="px-6 py-4">
- <span className="inline-flex px-2 py-1 text-[10px] font-medium rounded-full bg-white/5 text-white/50 capitalize">{emp.role?.replace('_', ' ')}</span>
- </td>
- <td className="px-6 py-4 text-sm text-white/80">${balance.toFixed(2)}</td>
- <td className="px-6 py-4">
- <span className={`inline-flex px-2 py-1 text-[10px] font-medium rounded-full capitalize ${emp.status === 'active' ? 'bg-white/10 text-white/70' : emp.status === 'suspended' ? 'bg-yellow-500/10 text-yellow-300' : 'bg-red-500/10 text-red-300'}`}>{emp.status}</span>
- </td>
+                <span className="inline-flex px-2.5 py-0.5 text-[10px] font-mono font-medium rounded-full bg-white/5 text-zinc-400 border border-white/10 capitalize">{emp.role?.replace('_', ' ')}</span>
+              </td>
+              <td className="px-6 py-4 text-sm font-mono text-emerald-400 font-medium">${balance.toFixed(2)}</td>
+              <td className="px-6 py-4">
+                <span className={`inline-flex px-2.5 py-0.5 text-[10px] font-mono font-medium rounded-full capitalize ${emp.status === 'active' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : emp.status === 'suspended' ? 'bg-amber-500/10 text-amber-300 border border-amber-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>{emp.status}</span>
+              </td>
  <td className="px-6 py-4">
  <div className="flex items-center justify-end gap-1">
  <button onClick={() => openEdit(emp)} className="p-1.5 rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-colors" title="Edit"><Edit3 className="w-4 h-4" /></button>
@@ -203,49 +214,49 @@ export default function Employees() {
  </div>
  </div>
 
- {showModal && (
- <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
- <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="liquid-glass rounded-2xl max-w-md w-full p-6 space-y-4">
- <div className="flex justify-between items-center pb-3 border-b border-white/10">
- <h3 className="text-lg font-semibold text-white">{editingId ? 'Edit Employee' : 'Add Employee'}</h3>
- <button onClick={() => setShowModal(false)} className="text-white/40 hover:text-white"><X className="w-5 h-5" /></button>
- </div>
- <div className="space-y-3">
- <div>
- <label className="block text-xs font-medium text-white/40 mb-1 uppercase tracking-wider">Full Name</label>
- <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-white/20" />
- </div>
- <div>
- <label className="block text-xs font-medium text-white/40 mb-1 uppercase tracking-wider">Email</label>
- <input type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} disabled={!!editingId} className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-white/20 disabled:opacity-50" />
- </div>
- <div>
- <label className="block text-xs font-medium text-white/40 mb-1 uppercase tracking-wider">Role</label>
- <select value={form.role} onChange={e => setForm(p => ({ ...p, role: e.target.value }))} className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-white/20">
- {ROLE_OPTIONS.map(r => <option key={r} value={r} className="bg-slate-900 capitalize">{r.replace('_', ' ')}</option>)}
- </select>
- </div>
- <div>
- <label className="block text-xs font-medium text-white/40 mb-1 uppercase tracking-wider">Team</label>
- <select value={form.team_id} onChange={e => setForm(p => ({ ...p, team_id: e.target.value }))} className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-white/20">
- <option value="" className="bg-slate-900">No team</option>
- {teamList.map(t => <option key={t.id} value={t.id} className="bg-slate-900">{t.name}</option>)}
- </select>
- </div>
- <div>
- <label className="block text-xs font-medium text-white/40 mb-1 uppercase tracking-wider">Wallet Address (optional)</label>
- <input value={form.wallet_address} onChange={e => setForm(p => ({ ...p, wallet_address: e.target.value }))} placeholder="Algorand address" className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-white/20" />
- </div>
- </div>
- <div className="pt-4 border-t border-white/10 flex justify-end gap-2">
- <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm text-white/60 hover:text-white">Cancel</button>
- <button onClick={handleSubmit} disabled={saving || !form.name || !form.email} className="px-4 py-2 bg-white text-black text-sm font-medium rounded-xl hover:bg-white/90 disabled:opacity-40 transition-colors">
- {saving ? 'Saving...' : editingId ? 'Update' : 'Add'}
- </button>
- </div>
- </motion.div>
- </div>
- )}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-[#0B0D13] border border-white/10 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.8)] max-w-md w-full p-6 space-y-4">
+            <div className="flex justify-between items-center pb-3 border-b border-white/10">
+              <h3 className="text-lg font-semibold text-white">{editingId ? 'Edit Employee' : 'Add Employee'}</h3>
+              <button onClick={() => setShowModal(false)} className="text-zinc-400 hover:text-white transition-colors"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-zinc-400 mb-1 uppercase tracking-wider font-mono">Full Name</label>
+                <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} className="w-full px-3 py-2 rounded-xl bg-white/[0.03] border border-white/10 text-white text-sm focus:outline-none focus:border-emerald-500/40" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-zinc-400 mb-1 uppercase tracking-wider font-mono">Email</label>
+                <input type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} disabled={!!editingId} className="w-full px-3 py-2 rounded-xl bg-white/[0.03] border border-white/10 text-white text-sm focus:outline-none focus:border-emerald-500/40 disabled:opacity-50" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-zinc-400 mb-1 uppercase tracking-wider font-mono">Role</label>
+                <select value={form.role} onChange={e => setForm(p => ({ ...p, role: e.target.value }))} className="w-full px-3 py-2 rounded-xl bg-white/[0.03] border border-white/10 text-white text-sm focus:outline-none focus:border-emerald-500/40">
+                  {ROLE_OPTIONS.map(r => <option key={r} value={r} className="bg-[#0B0D13] capitalize">{r.replace('_', ' ')}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-zinc-400 mb-1 uppercase tracking-wider font-mono">Team</label>
+                <select value={form.team_id} onChange={e => setForm(p => ({ ...p, team_id: e.target.value }))} className="w-full px-3 py-2 rounded-xl bg-white/[0.03] border border-white/10 text-white text-sm focus:outline-none focus:border-emerald-500/40">
+                  <option value="" className="bg-[#0B0D13]">No team</option>
+                  {teamList.map(t => <option key={t.id} value={t.id} className="bg-[#0B0D13]">{t.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-zinc-400 mb-1 uppercase tracking-wider font-mono">Wallet Address (optional)</label>
+                <input value={form.wallet_address} onChange={e => setForm(p => ({ ...p, wallet_address: e.target.value }))} placeholder="Algorand address" className="w-full px-3 py-2 rounded-xl bg-white/[0.03] border border-white/10 text-white text-sm placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500/40 font-mono" />
+              </div>
+            </div>
+            <div className="pt-4 border-t border-white/10 flex justify-end gap-2.5">
+              <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors">Cancel</button>
+              <button onClick={handleSubmit} disabled={saving || !form.name || !form.email} className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-semibold rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.3)] disabled:opacity-40 transition-all">
+                {saving ? 'Saving...' : editingId ? 'Update' : 'Add Employee'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
  </div>
  )
 }
