@@ -17,22 +17,37 @@ const deployer = process.env.DEPLOYER_MNEMONIC
  : await getLocalNetDispenser(algorand.client.algod)
 
 const factory = algorand.client.getTypedAppFactory(YieldVaultFactory, {
- defaultSender: deployer.addr,
- defaultSigner: algosdk.makeBasicAccountTransactionSigner(deployer),
+  defaultSender: deployer.addr.toString(),
+  defaultSigner: algosdk.makeBasicAccountTransactionSigner(deployer),
 })
 
-const { appClient } = await factory.deploy({
- onUpdate: 'append',
- onSchemaBreak: 'append',
- createArgs: [
- deployer.addr, // admin = deployer
- 0n, // USDC asset ID — set to actual USDC asset ID in production
- 7n, // yield eligible after 7 days
- 500_000n, // min balance = $0.50 in microUSDC
- 7000n, // company share = 70%
- 3000n, // employee share = 30%
- 1500n, // APY cap = 15%
- ],
+console.log(`Deploying CreditFlowYieldVault to Algorand...`)
+console.log(`Deployer address: ${deployer.addr.toString()}`)
+
+const usdcAssetId = BigInt(process.env.USDC_ASSET_ID ?? '10458941')
+
+const { appClient, result } = await factory.deploy({
+  onUpdate: 'append',
+  onSchemaBreak: 'append',
+  createParams: {
+    method: 'create',
+    args: {
+      admin: deployer.addr.toString(),
+      usdcAssetId,
+      minBalance: 500_000n, // min balance = $0.50 in microUSDC
+      companyShareBps: 7000n, // company share = 70%
+      employeeShareBps: 3000n, // employee share = 30%
+      apyCapBps: 1500n, // APY cap = 15%
+    },
+  },
 })
 
-console.log(`Deployed CreditFlowYieldVault: APP_ID=${appClient.appId}`)
+console.log(`\n==============================================`)
+console.log(`CreditFlowYieldVault Deployed Successfully!`)
+console.log(`APP_ID: ${appClient.appId}`)
+console.log(`APP_ADDRESS: ${appClient.appAddress}`)
+console.log(`USDC_ASSET_ID: ${usdcAssetId}`)
+if (result.operationPerformed) {
+  console.log(`Operation: ${result.operationPerformed}`)
+}
+console.log(`==============================================\n`)

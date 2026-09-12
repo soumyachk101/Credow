@@ -31,13 +31,13 @@ export class CreditFlowYieldVault extends Contract {
  readonly total_deposits = GlobalState<arc4.Uint64>({ key: 'tdep' })
  readonly total_yield_paid = GlobalState<arc4.Uint64>({ key: 'tyld' })
  readonly min_balance = GlobalState<arc4.Uint64>({ key: 'mbal' })
- readonly company_share_bps = GlobalState<arc4.Uint64>({ key: 'esbp' })
+ readonly company_share_bps = GlobalState<arc4.Uint64>({ key: 'csbp' })
  readonly employee_share_bps = GlobalState<arc4.Uint64>({ key: 'esbp' })
  readonly apy_cap_bps = GlobalState<arc4.Uint64>({ key: 'acap' })
  readonly paused = GlobalState<arc4.Bool>({ key: 'paus' })
  readonly positions = BoxMap<arc4.Address, PositionData>({ keyPrefix: 'pos_' })
 
- @abimethod({ readonly: true })
+ @abimethod({ onCreate: 'require' })
  create(
  admin: arc4.Address,
  usdcAssetId: arc4.Uint64,

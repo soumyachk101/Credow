@@ -9,7 +9,7 @@
     "node": ">=24.0"
   },
   "scripts": {
-    "build": "puya-ts src --output-source-map --out-dir ../artifacts && algokit-client-generator generate -a artifacts/YieldVault.arc56.json -o artifacts/YieldVaultClient.ts",
+    "build": "puya-ts src --output-source-map --out-dir ../artifacts && algokit-client-generator generate -a artifacts/CreditFlowYieldVault.arc56.json -o artifacts/YieldVaultClient.ts",
     "test": "npm run build && vitest run",
     "test:watch": "vitest watch",
     "check-types": "tsc --noEmit",

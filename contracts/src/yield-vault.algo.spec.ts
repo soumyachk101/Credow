@@ -1,101 +1,69 @@
 import { TestExecutionContext } from '@algorandfoundation/algorand-typescript-testing'
-import { describe, expect, it } from 'vitest'
+import { arc4 } from '@algorandfoundation/algorand-typescript'
+import { describe, expect, it, beforeEach } from 'vitest'
 import { CreditFlowYieldVault } from './yield-vault.algo'
 
 describe('CreditFlowYieldVault contract', () => {
- const ctx = new TestExecutionContext()
+  const ctx = new TestExecutionContext()
 
- it('creates with correct config', () => {
- const contract = ctx.contract.create(CreditFlowYieldVault, {
- admin: ctx.defaultSigner.addr,
- usdcAssetId: 0n,
- minBalance: 500_000n,
- companyShareBps: 7000n,
- employeeShareBps: 3000n,
- apyCapBps: 1500n,
- })
- expect(contract.admin.value).toBe(ctx.defaultSigner.addr)
- expect(contract.min_balance.value).toBe(500_000n)
- })
+  beforeEach(() => {
+    ctx.reset()
+  })
 
- it('returns zero yield for non-existent company', () => {
- const contract = ctx.contract.create(CreditFlowYieldVault, {
- admin: ctx.defaultSigner.addr,
- usdcAssetId: 0n,
- minBalance: 500_000n,
- companyShareBps: 7000n,
- employeeShareBps: 3000n,
- apyCapBps: 1500n,
- })
+  function createVault() {
+    const contract = ctx.contract.create(CreditFlowYieldVault)
+    const admin = new arc4.Address(ctx.defaultSender)
+    contract.create(
+      admin,
+      new arc4.Uint64(0),
+      new arc4.Uint64(500_000),
+      new arc4.Uint64(7000),
+      new arc4.Uint64(3000),
+      new arc4.Uint64(1500)
+    )
+    return { contract, admin }
+  }
 
- const result = contract.getAvailableYield({ companyAddr: ctx.defaultSigner.addr })
- expect(result.return).toBe(0n)
- })
+  it('creates with correct config', () => {
+    const { contract, admin } = createVault()
+    expect(contract.admin.value.bytes).toEqual(admin.bytes)
+    expect(BigInt(contract.min_balance.value.asUint64().toString())).toBe(500_000n)
+    expect(BigInt(contract.company_share_bps.value.asUint64().toString())).toBe(7000n)
+    expect(BigInt(contract.employee_share_bps.value.asUint64().toString())).toBe(3000n)
+  })
 
- it('allows deposit and query', () => {
- const contract = ctx.contract.create(CreditFlowYieldVault, {
- admin: ctx.defaultSigner.addr,
- usdcAssetId: 0n,
- minBalance: 500_000n,
- companyShareBps: 7000n,
- employeeShareBps: 3000n,
- apyCapBps: 1500n,
- })
+  it('returns zero yield for non-existent company', () => {
+    const { contract, admin } = createVault()
+    const result = contract.getAvailableYield(admin)
+    expect(BigInt(result.asUint64().toString())).toBe(0n)
+  })
 
- const companyAddr = ctx.defaultSigner.addr
- const depositAmount = 10_000_000n
+  it('allows deposit and query', () => {
+    const { contract, admin } = createVault()
+    const depositAmount = new arc4.Uint64(10_000_000)
+    contract.deposit(admin, depositAmount)
+    const balance = contract.getCompanyBalance(admin)
+    expect(BigInt(balance.asUint64().toString())).toBe(10_000_000n)
+  })
 
- contract.deposit({ companyAddr, amount: depositAmount })
- const balance = contract.getCompanyBalance({ companyAddr })
- expect(balance.return).toBe(depositAmount)
- })
+  it('calculates employee share of yield', () => {
+    const { contract, admin } = createVault()
+    const depositAmount = new arc4.Uint64(10_000_000)
+    contract.deposit(admin, depositAmount)
+    const yield_ = contract.getAvailableYield(admin)
+    expect(typeof BigInt(yield_.asUint64().toString())).toBe('bigint')
+  })
 
- it('calculates employee share of yield', () => {
- const contract = ctx.contract.create(CreditFlowYieldVault, {
- admin: ctx.defaultSigner.addr,
- usdcAssetId: 0n,
- minBalance: 500_000n,
- companyShareBps: 7000n,
- employeeShareBps: 3000n,
- apyCapBps: 1500n,
- })
+  it('rejects zero deposit', () => {
+    const { contract, admin } = createVault()
+    expect(() => contract.deposit(admin, new arc4.Uint64(0))).toThrow('zero_amount')
+  })
 
- const companyAddr = ctx.defaultSigner.addr
- const depositAmount = 10_000_000n
-
- contract.deposit({ companyAddr, amount: depositAmount })
- const yield_ = contract.getAvailableYield({ companyAddr })
- expect(typeof yield_.return).toBe('bigint')
- })
-
- it('rejects zero deposit', () => {
- const contract = ctx.contract.create(CreditFlowYieldVault, {
- admin: ctx.defaultSigner.addr,
- usdcAssetId: 0n,
- minBalance: 500_000n,
- companyShareBps: 7000n,
- employeeShareBps: 3000n,
- apyCapBps: 1500n,
- })
-
- expect(() =>
- contract.deposit({ companyAddr: ctx.defaultSigner.addr, amount: 0n })
- ).toThrow('zero_amount')
- })
-
- it('rejects unauthorized deposit', () => {
- const contract = ctx.contract.create(CreditFlowYieldVault, {
- admin: ctx.defaultSigner.addr,
- usdcAssetId: 0n,
- minBalance: 500_000n,
- companyShareBps: 7000n,
- employeeShareBps: 3000n,
- apyCapBps: 1500n,
- })
-
- const otherCtx = new TestExecutionContext()
- expect(() =>
- contract.deposit({ companyAddr: otherCtx.defaultSigner.addr, amount: 1000n })
- ).toThrow()
- })
+  it('rejects unauthorized deposit', () => {
+    const { contract, admin } = createVault()
+    const other = ctx.any.account()
+    ctx.txn.createScope([ctx.any.txn.applicationCall({ sender: other })]).execute(() => {
+      expect(() => contract.deposit(admin, new arc4.Uint64(1000))).toThrow('only_admin')
+    })
+  })
 })

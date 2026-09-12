@@ -7,33 +7,29 @@ main:
     bytecblock 0x00 "pos_" "paus" "admin" "tdep" 0x151f7c75 "tyld" 0x80 "mbal" "esbp" "acap"
     // src/yield-vault.algo.ts:28
     // export class CreditFlowYieldVault extends Contract {
-    txn NumAppArgs
-    bz main___algots__.defaultCreate@16
     txn OnCompletion
     !
     assert
     txn ApplicationID
-    assert
-    pushbytess 0x61ffccca 0xd50ee87b 0x2e5ce0c6 0x13ff1ce9 0xe2d36d7e 0xd79cb883 0x0de1ed88 0x88225edc 0xa26c1f57 // method "create(address,uint64,uint64,uint64,uint64,uint64)void", method "deposit(address,uint64)void", method "claimYield(address)uint64", method "withdraw(address,uint64)void", method "updateApy(uint64)void", method "togglePause()void", method "getAvailableYield(address)uint64", method "getCompanyBalance(address)uint64", method "getCompanyPosition(address)(uint64,uint64,uint64,bool)"
+    bz main_create_NoOp@12
+    pushbytess 0xd50ee87b 0x2e5ce0c6 0x13ff1ce9 0xe2d36d7e 0xd79cb883 0x0de1ed88 0x88225edc 0xa26c1f57 // method "deposit(address,uint64)void", method "claimYield(address)uint64", method "withdraw(address,uint64)void", method "updateApy(uint64)void", method "togglePause()void", method "getAvailableYield(address)uint64", method "getCompanyBalance(address)uint64", method "getCompanyPosition(address)(uint64,uint64,uint64,bool)"
     txna ApplicationArgs 0
-    match create deposit claimYield withdraw updateApy togglePause getAvailableYield getCompanyBalance getCompanyPosition
+    match deposit claimYield withdraw updateApy togglePause getAvailableYield getCompanyBalance getCompanyPosition
     err
 
-main___algots__.defaultCreate@16:
+main_create_NoOp@12:
     // src/yield-vault.algo.ts:28
     // export class CreditFlowYieldVault extends Contract {
-    txn OnCompletion
-    !
-    txn ApplicationID
-    !
-    &&
-    return
+    pushbytes 0x61ffccca // method "create(address,uint64,uint64,uint64,uint64,uint64)void"
+    txna ApplicationArgs 0
+    match create
+    err
 
 
 // src/yield-vault.algo.ts::CreditFlowYieldVault.create[routing]() -> void:
 create:
     // src/yield-vault.algo.ts:40
-    // @abimethod({ readonly: true })
+    // @abimethod({ onCreate: 'require' })
     txna ApplicationArgs 1
     dup
     len
@@ -53,6 +49,7 @@ create:
     ==
     assert // invalid number of bytes for arc4.uint64
     txna ApplicationArgs 4
+    dup
     len
     intc_2 // 8
     ==
@@ -74,7 +71,7 @@ create:
     txn Sender
     // src/yield-vault.algo.ts:49
     // assert(senderAddress() === admin, 'only_admin')
-    dig 5
+    dig 6
     ==
     assert // only_admin
     // src/yield-vault.algo.ts:29
@@ -82,14 +79,14 @@ create:
     bytec_3 // "admin"
     // src/yield-vault.algo.ts:50
     // this.admin.value = admin
-    uncover 5
+    uncover 6
     app_global_put
     // src/yield-vault.algo.ts:30
     // readonly usdc_asset_id = GlobalState<arc4.Uint64>({ key: 'usdc' })
     pushbytes "usdc"
     // src/yield-vault.algo.ts:51
     // this.usdc_asset_id.value = usdcAssetId
-    uncover 4
+    uncover 5
     app_global_put
     // src/yield-vault.algo.ts:52
     // this.total_deposits.value = ZERO_U64
@@ -114,6 +111,13 @@ create:
     bytec 8 // "mbal"
     // src/yield-vault.algo.ts:54
     // this.min_balance.value = minBalance
+    uncover 4
+    app_global_put
+    // src/yield-vault.algo.ts:34
+    // readonly company_share_bps = GlobalState<arc4.Uint64>({ key: 'csbp' })
+    pushbytes "csbp"
+    // src/yield-vault.algo.ts:55
+    // this.company_share_bps.value = companyShareBps
     uncover 3
     app_global_put
     // src/yield-vault.algo.ts:35
@@ -138,7 +142,7 @@ create:
     bytec_0 // 0x00
     app_global_put
     // src/yield-vault.algo.ts:40
-    // @abimethod({ readonly: true })
+    // @abimethod({ onCreate: 'require' })
     intc_1 // 1
     return
 
