@@ -94,7 +94,7 @@ export default function Landing() {
  <div className="flex items-center gap-8">
  <Link to="/" className="flex items-center gap-2">
  <Globe className="w-6 h-6 text-white" />
- <span className="text-white font-semibold text-lg">CreditFlow</span>
+ <span className="text-white font-semibold text-lg">Credow</span>
  </Link>
  <div className="hidden md:flex items-center gap-8 ml-8">
  <a href="#philosophy" className="text-white/80 hover:text-white text-sm font-medium transition-colors">Features</a>

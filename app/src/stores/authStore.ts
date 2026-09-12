@@ -189,7 +189,7 @@ export const useAuthStore = create<AuthState>()(
  if (session?.user) {
  const u: AuthUser = {
  id: session.user.id,
- email: session.user.email || email || 'admin@creditflow.io',
+ email: session.user.email || email || 'admin@credow.io',
  name: name || session.user.user_metadata?.name || 'Admin',
  role: 'company_owner',
  }
@@ -199,7 +199,7 @@ export const useAuthStore = create<AuthState>()(
  } catch (_) {}
 
  // Try signing up or logging in with Supabase
- const userEmail = email || `admin-${Date.now().toString(36)}@creditflow.io`
+ const userEmail = email || `admin-${Date.now().toString(36)}@credow.io`
  const userPassword = 'Password123!'
  try {
  const { data, error } = await supabase.auth.signUp({

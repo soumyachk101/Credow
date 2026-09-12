@@ -55,7 +55,7 @@ export default function Navbar() {
             <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
               <Globe className="w-4 h-4 text-white" />
             </div>
-            <span className="text-white font-medium text-sm hidden sm:block">CreditFlow</span>
+            <span className="text-white font-medium text-sm hidden sm:block">Credow</span>
           </Link>
 
           <div className="hidden md:flex items-center gap-1">

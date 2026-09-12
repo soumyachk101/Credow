@@ -213,7 +213,7 @@ export default function Sidebar() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-sm tracking-tight text-white font-mono">CreditFlow</span>
+              <span className="font-semibold text-sm tracking-tight text-white font-mono">Credow</span>
               <span className="px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[9px] rounded font-mono font-medium tracking-wide">
                 AVM
               </span>
@@ -467,7 +467,7 @@ export default function Sidebar() {
           <div className="w-7 h-7 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
             <CreditFlowLogoMark className="w-4 h-4" />
           </div>
-          <span className="font-semibold text-sm text-white font-mono">CreditFlow</span>
+          <span className="font-semibold text-sm text-white font-mono">Credow</span>
         </Link>
         <div className="flex items-center gap-2">
           <WalletButton size="sm" />

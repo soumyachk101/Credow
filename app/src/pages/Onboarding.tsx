@@ -454,7 +454,7 @@ export default function Onboarding() {
         <div className="liquid-glass rounded-full px-6 py-3 flex items-center justify-between border border-white/15 bg-white/[0.03] backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.37)]">
           <Link to="/" className="flex items-center gap-2.5 group">
             <Globe className="w-5 h-5 text-white/90 group-hover:text-white transition-colors" />
-            <span className="text-white font-semibold text-base tracking-tight">CreditFlow</span>
+            <span className="text-white font-semibold text-base tracking-tight">Credow</span>
           </Link>
           <Link
             to="/"
@@ -561,7 +561,7 @@ export default function Onboarding() {
       {/* ── Footer ── */}
       <footer className="relative z-10 w-full max-w-xl mx-auto text-center py-4">
         <p className="text-xs text-white/30 font-mono">
-          &copy; {new Date().getFullYear()} CreditFlow &middot; Algorand Native Corporate Treasury
+          &copy; {new Date().getFullYear()} Credow &middot; Algorand Native Corporate Treasury
         </p>
       </footer>
     </div>
