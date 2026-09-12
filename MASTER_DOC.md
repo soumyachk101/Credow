@@ -1,4 +1,4 @@
-# CreditFlow (Chudgaye) — Master Technical Document
+# Credow — Master Technical Document
 
 **Version:** 1.0
 **Last Updated:** September 2026

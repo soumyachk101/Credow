@@ -1,4 +1,4 @@
-# CreditFlow (Chudgaye)
+# Credow
 
 > Corporate credit allocation on Algorand — managers allocate digital credits, employees claim them via x402 payments, and unclaimed credits earn yield in an on-chain vault.
 
@@ -31,7 +31,7 @@
 
 ## 1. What This Product Does
 
-CreditFlow lets companies give employees a digital credit allowance. The credits sit on **Algorand** as **USDC**, so they are real, transferable, and auditable. Two key mechanisms make this work:
+Credow lets companies give employees a digital credit allowance. The credits sit on **Algorand** as **USDC**, so they are real, transferable, and auditable. Two key mechanisms make this work:
 
 - **x402 payments** — when an employee "claims" credits to pay for a service, the backend issues a 402 Payment Required response. The employee's wallet signs an Algorand USDC transfer. The backend verifies it on-chain and settles.
 - **Yield vault** — credits that go unclaimed flow into an Algorand smart contract that generates yield. The yield is split between the company and the employee.
@@ -512,7 +512,7 @@ Express.js backend runs alongside the Vite dev server. Auth is handled via Supab
 ## 11. Project Structure
 
 ```
-Chudgaye/
+Credow/
 ├── AGENTS.md # Project agent guide (skills, MCP tools)
 ├── CLAUDE.md # AI coding assistant instructions
 ├── ARCHITECTURE.md # Detailed system architecture
@@ -718,7 +718,7 @@ Each company row stores an `x402_config` JSON column:
 ```json
 {
  "facilitator_url": "https://facilitator.example.com",
- "settlement_url": "https://api.creditflow.io/x402/settle",
+ "settlement_url": "https://api.credow.io/x402/settle",
  "network": "algorand:testnet",
  "asset_id": "31566704",
  "asset_decimals": 6,
@@ -741,7 +741,7 @@ Each company row stores an `x402_config` JSON column:
 
 ```bash
 # 1. Clone and install
-git clone <repo-url> && cd Chudgaye
+git clone https://github.com/soumyachk101/Credow.git && cd Credow
 npm install
 
 # 2. Configure environment

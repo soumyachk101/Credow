@@ -1,4 +1,4 @@
-# CreditFlow (Chudgaye)
+# Credow
 
 ## Corporate Credit Allocation on Algorand
 
