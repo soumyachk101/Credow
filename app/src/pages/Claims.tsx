@@ -682,8 +682,18 @@ function PaymentModal({ allocation, service, amount, status, txHash, error, load
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-white/40">USDC Opt-In Status:</span>
-                    <span className={walletBalance.isOptedIn ? "text-emerald-400 font-semibold" : "text-amber-400 font-semibold"}>
-                      {walletBalance.isOptedIn ? "✓ Opted In" : "⚠️ Not Opted In"}
+                    <span className={`font-semibold inline-flex items-center gap-1 ${walletBalance.isOptedIn ? "text-emerald-400" : "text-amber-400"}`}>
+                      {walletBalance.isOptedIn ? (
+                        <>
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Opted In</span>
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="w-3.5 h-3.5" />
+                          <span>Not Opted In</span>
+                        </>
+                      )}
                     </span>
                   </div>
                   <div className="flex items-center justify-between pt-1 border-t border-white/5">

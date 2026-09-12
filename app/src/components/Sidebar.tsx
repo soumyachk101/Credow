@@ -21,11 +21,104 @@ import {
   Menu,
   X,
   RefreshCw,
-  Globe,
   Wallet,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { UserRole } from '@/lib/types'
+
+// ── Custom Professional SVGs (Zero Emojis) ───────────────────────────────────
+
+function CreditFlowLogoMark({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <path
+        d="M12 2L3 7V17L12 22L21 17V7L12 2Z"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12 6L7 9V15L12 18L17 15V9L12 6Z"
+        fill="currentColor"
+        fillOpacity="0.25"
+        stroke="currentColor"
+        strokeWidth="1.25"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="12" r="2" fill="currentColor" />
+    </svg>
+  )
+}
+
+function AlgorandIcon({ className = "w-3.5 h-3.5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <path d="M13.43 2.14L9.83 12.38H6.55L12.31 0.48H15.93L13.43 7.58H16.27L14.77 11.83H11.93L8.03 23.52H4.41L13.43 2.14Z" />
+    </svg>
+  )
+}
+
+function UsdcIcon({ className = "w-3.5 h-3.5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <circle cx="12" cy="12" r="9.5" stroke="currentColor" strokeWidth="1.5" />
+      <path
+        d="M12.75 6.5V8M12.75 16V17.5M10.25 14.5C10.25 15.6 11.15 16 12.5 16C13.85 16 14.75 15.35 14.75 14.2C14.75 12.55 11.25 12.1 11.25 10.8C11.25 9.8 11.95 9.2 12.75 9.2C13.85 9.2 14.45 9.75 14.5 10.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+function EmployeePersonaIcon({ className = "w-3.5 h-3.5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <path
+        d="M14 16.5V15C14 13.3431 12.6569 12 11 12H5C3.34315 12 2 13.3431 2 15V16.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <circle cx="8" cy="6" r="3.5" stroke="currentColor" strokeWidth="1.5" />
+      <path
+        d="M14.5 7.5L16 9L18.5 6"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function OwnerPersonaIcon({ className = "w-3.5 h-3.5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <path
+        d="M3 6.5C3 5.39543 3.89543 4.5 5 4.5H15C16.1046 4.5 17 5.39543 17 6.5V14.5C17 15.6046 16.1046 16.5 15 16.5H5C3.89543 16.5 3 15.6046 3 14.5V6.5Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M7.5 4.5V3.5C7.5 2.67157 8.17157 2 9 2H11C11.8284 2 12.5 2.67157 12.5 3.5V4.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M3 8.5H17"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+      <circle cx="10" cy="12.5" r="1.25" fill="currentColor" />
+    </svg>
+  )
+}
 
 interface NavItem {
   to: string
@@ -46,7 +139,6 @@ export default function Sidebar() {
   const role: UserRole = user?.role || 'employee'
   const isEmployee = role === 'employee'
 
-  // Fetch live on-chain Algorand balance whenever activeAddress changes
   const loadBalance = async () => {
     if (!activeAddress) {
       setBalance(null)
@@ -73,7 +165,6 @@ export default function Sidebar() {
     return () => clearInterval(interval)
   }, [activeAddress])
 
-  // Close mobile drawer on route change
   useEffect(() => {
     setMobileOpen(false)
   }, [location.pathname])
@@ -85,27 +176,25 @@ export default function Sidebar() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  // Define navigation items dynamically based on active role (x402-demo removed!)
   const getNavLinks = (): NavItem[] => {
     if (role === 'super_admin') {
       return [
         { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { to: '/companies', label: 'Companies', icon: Building2 },
         { to: '/teams', label: 'Teams', icon: Users },
-        { to: '/claims', label: 'Claims & x402', icon: Zap },
+        { to: '/claims', label: 'Claims & Settlement', icon: Zap },
       ]
     }
     if (role === 'company_owner' || role === 'manager') {
       return [
         { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-        { to: '/allocations', label: 'Allocations', icon: Coins },
-        { to: '/claims', label: 'Claims & x402', icon: Zap },
+        { to: '/allocations', label: 'Credit Allocations', icon: Coins },
+        { to: '/claims', label: 'Claims & Settlement', icon: Zap },
         { to: '/yield', label: 'Yield Vault', icon: TrendingUp },
-        { to: '/teams', label: 'Teams', icon: Users },
-        { to: '/employees', label: 'Employees', icon: UserCheck },
+        { to: '/teams', label: 'Teams Management', icon: Users },
+        { to: '/employees', label: 'Personnel', icon: UserCheck },
       ]
     }
-    // employee
     return [
       { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { to: '/claims', label: 'Claim Credits', icon: Zap },
@@ -119,23 +208,23 @@ export default function Sidebar() {
       {/* Brand Header */}
       <div className="p-5 border-b border-white/5 flex items-center justify-between">
         <Link to="/dashboard" className="flex items-center gap-3 group">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400/20 to-blue-500/20 border border-emerald-500/30 flex items-center justify-center group-hover:border-emerald-400 transition-colors shadow-[0_0_15px_rgba(16,185,129,0.15)]">
-            <Globe className="w-5 h-5 text-emerald-400" />
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-blue-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 group-hover:border-emerald-400/60 transition-all shadow-[0_0_20px_rgba(16,185,129,0.12)]">
+            <CreditFlowLogoMark className="w-5 h-5 text-emerald-400" />
           </div>
           <div>
-            <div className="flex items-center gap-1.5">
-              <span className="font-semibold text-sm tracking-tight text-white">CreditFlow</span>
-              <span className="px-1.5 py-0.2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] rounded-md font-mono">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-sm tracking-tight text-white font-mono">CreditFlow</span>
+              <span className="px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[9px] rounded font-mono font-medium tracking-wide">
                 AVM
               </span>
             </div>
-            <p className="text-[10px] text-white/40 flex items-center gap-1 mt-0.5">
+            <p className="text-[10px] text-white/40 flex items-center gap-1.5 mt-0.5">
+              <AlgorandIcon className="w-2.5 h-2.5 text-emerald-400" />
+              <span>Algorand TestNet</span>
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              Algorand TestNet
             </p>
           </div>
         </Link>
-        {/* Mobile close button */}
         <button
           onClick={() => setMobileOpen(false)}
           className="md:hidden p-1 text-white/40 hover:text-white rounded-lg transition-colors"
@@ -145,11 +234,15 @@ export default function Sidebar() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-3.5 py-4 space-y-5">
-        {/* Persona Switcher */}
+        {/* Role Switcher (Custom SVGs, No Emojis) */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between px-1">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-white/40">Role Persona</span>
-            <span className="text-[10px] text-emerald-400/80 font-mono capitalize">{role.replace('_', ' ')}</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-white/40 font-mono">
+              Role Persona
+            </span>
+            <span className="text-[10px] text-white/60 font-mono capitalize">
+              {role.replace('_', ' ')}
+            </span>
           </div>
           <div className="bg-white/[0.03] p-1 rounded-xl flex items-center gap-1 border border-white/5">
             <button
@@ -160,17 +253,19 @@ export default function Sidebar() {
                   : 'text-white/40 hover:text-white hover:bg-white/5'
               }`}
             >
-              <span>👷</span> Employee
+              <EmployeePersonaIcon className={`w-3.5 h-3.5 ${isEmployee ? 'text-emerald-400' : 'text-white/40'}`} />
+              <span>Employee</span>
             </button>
             <button
               onClick={() => switchRole('company_owner')}
               className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-medium transition-all ${
                 !isEmployee
-                  ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30 shadow-sm'
+                  ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30 shadow-sm'
                   : 'text-white/40 hover:text-white hover:bg-white/5'
               }`}
             >
-              <span>👑</span> Owner
+              <OwnerPersonaIcon className={`w-3.5 h-3.5 ${!isEmployee ? 'text-blue-400' : 'text-white/40'}`} />
+              <span>Executive</span>
             </button>
           </div>
         </div>
@@ -178,15 +273,15 @@ export default function Sidebar() {
         {/* Wallet Hub */}
         <div className="liquid-glass rounded-2xl p-3.5 space-y-3 border border-white/5">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-white/70">
-              <Wallet className="w-3.5 h-3.5 text-yellow-400" />
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-white/80">
+              <Wallet className="w-3.5 h-3.5 text-emerald-400" />
               <span>Algorand Wallet</span>
             </div>
             {activeAddress && (
               <button
                 onClick={loadBalance}
                 disabled={loadingBalance}
-                className="text-white/40 hover:text-white transition-colors"
+                className="text-white/40 hover:text-white transition-colors p-0.5"
                 title="Refresh on-chain balance"
               >
                 <RefreshCw className={`w-3 h-3 ${loadingBalance ? 'animate-spin' : ''}`} />
@@ -197,14 +292,14 @@ export default function Sidebar() {
           {activeAddress ? (
             <div className="space-y-2">
               {/* Address with Copy & Explorer */}
-              <div className="flex items-center justify-between bg-black/40 px-2.5 py-1.5 rounded-lg border border-white/5">
+              <div className="flex items-center justify-between bg-black/50 px-2.5 py-1.5 rounded-lg border border-white/5">
                 <span className="text-[11px] font-mono text-white/80">
                   {activeAddress.slice(0, 6)}...{activeAddress.slice(-4)}
                 </span>
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={copyAddress}
-                    className="text-white/40 hover:text-white transition-colors"
+                    className="text-white/40 hover:text-white transition-colors p-1"
                     title="Copy address"
                   >
                     {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
@@ -213,7 +308,7 @@ export default function Sidebar() {
                     href={`https://testnet.explorer.algorand.org/address/${activeAddress}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-white/40 hover:text-emerald-300 transition-colors"
+                    className="text-white/40 hover:text-emerald-300 transition-colors p-1"
                     title="View on Algorand Explorer"
                   >
                     <ExternalLink className="w-3 h-3" />
@@ -224,25 +319,41 @@ export default function Sidebar() {
               {/* Balance Grid */}
               <div className="grid grid-cols-2 gap-1.5 text-xs">
                 <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5">
-                  <span className="text-[10px] text-white/40 block">Gas (ALGO)</span>
+                  <div className="flex items-center gap-1 text-[10px] text-white/40 mb-0.5">
+                    <AlgorandIcon className="w-2.5 h-2.5 text-white/50" />
+                    <span>Gas (ALGO)</span>
+                  </div>
                   <span className="font-mono text-white font-medium text-xs">
                     {balance ? balance.algo.toFixed(3) : '—'}
                   </span>
                 </div>
                 <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5">
-                  <span className="text-[10px] text-white/40 block">USDC (ASA)</span>
+                  <div className="flex items-center gap-1 text-[10px] text-white/40 mb-0.5">
+                    <UsdcIcon className="w-2.5 h-2.5 text-emerald-400" />
+                    <span>USDC (ASA)</span>
+                  </div>
                   <span className="font-mono text-emerald-400 font-medium text-xs">
                     {balance ? `$${balance.usdc.toFixed(2)}` : '—'}
                   </span>
                 </div>
               </div>
 
-              {/* Opt-In Status Indicator */}
-              <div className="flex items-center justify-between px-1 text-[11px]">
+              {/* Opt-In Status Indicator (Clean SVGs) */}
+              <div className="flex items-center justify-between px-1 text-[11px] pt-0.5">
                 <span className="text-white/40">USDC Opt-in:</span>
                 {balance ? (
-                  <span className={balance.isOptedIn ? 'text-emerald-400 font-medium' : 'text-amber-400 font-medium'}>
-                    {balance.isOptedIn ? '✓ Opted In' : '⚠️ Not Opted In'}
+                  <span className={`inline-flex items-center gap-1 font-medium ${balance.isOptedIn ? 'text-emerald-400' : 'text-amber-400'}`}>
+                    {balance.isOptedIn ? (
+                      <>
+                        <CheckCircle2 className="w-3 h-3" />
+                        <span>Opted In</span>
+                      </>
+                    ) : (
+                      <>
+                        <AlertCircle className="w-3 h-3" />
+                        <span>Not Opted In</span>
+                      </>
+                    )}
                   </span>
                 ) : (
                   <span className="text-white/30 font-mono">Checking...</span>
@@ -255,13 +366,14 @@ export default function Sidebar() {
                   href="https://lora.algokit.io/testnet/fund"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block text-center text-[10px] text-blue-400 hover:text-blue-300 bg-blue-500/10 py-1 rounded-md transition-colors"
+                  className="flex items-center justify-center gap-1 text-center text-[10px] text-blue-400 hover:text-blue-300 bg-blue-500/10 py-1 rounded-md transition-colors"
                 >
-                  Claim Free TestNet ALGO Gas ↗
+                  <span>Claim Free TestNet ALGO Gas</span>
+                  <ExternalLink className="w-2.5 h-2.5" />
                 </a>
               )}
 
-              {/* Wallet UI Button for disconnect / account switch */}
+              {/* Wallet UI Button */}
               <div className="pt-1 flex justify-center">
                 <WalletButton size="sm" />
               </div>
@@ -280,8 +392,8 @@ export default function Sidebar() {
 
         {/* Main Navigation */}
         <div className="space-y-1">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-white/40 px-2 block mb-1">
-            Menu
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-white/40 px-2 block mb-1 font-mono">
+            Navigation
           </span>
           {navLinks.map((link) => {
             const Icon = link.icon
@@ -320,14 +432,14 @@ export default function Sidebar() {
       <div className="p-3.5 border-t border-white/5 mt-auto bg-white/[0.01]">
         <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-white/[0.02] border border-white/5">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-500/30 to-purple-500/30 border border-white/10 flex items-center justify-center shrink-0">
-              <span className="text-white text-xs font-bold">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-500/20 to-blue-500/20 border border-white/10 flex items-center justify-center shrink-0">
+              <span className="text-white text-xs font-semibold font-mono">
                 {(user?.name || 'U').charAt(0).toUpperCase()}
               </span>
             </div>
             <div className="min-w-0">
               <p className="text-xs font-medium text-white truncate">{user?.name || 'User'}</p>
-              <p className="text-[10px] text-white/40 truncate">{user?.email || 'user@example.com'}</p>
+              <p className="text-[10px] text-white/40 truncate font-mono">{user?.email || 'user@example.com'}</p>
             </div>
           </div>
           <button
@@ -352,10 +464,10 @@ export default function Sidebar() {
       {/* Mobile Top Header */}
       <div className="md:hidden sticky top-0 z-40 flex items-center justify-between px-4 py-3 bg-black/80 backdrop-blur-lg border-b border-white/10">
         <Link to="/dashboard" className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center">
-            <Globe className="w-4 h-4 text-emerald-400" />
+          <div className="w-7 h-7 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+            <CreditFlowLogoMark className="w-4 h-4" />
           </div>
-          <span className="font-semibold text-sm text-white">CreditFlow</span>
+          <span className="font-semibold text-sm text-white font-mono">CreditFlow</span>
         </Link>
         <div className="flex items-center gap-2">
           <WalletButton size="sm" />

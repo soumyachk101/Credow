@@ -17,6 +17,8 @@ import {
  ArrowRight,
  Zap,
  RefreshCw,
+ UserCheck,
+ Shield,
 } from 'lucide-react'
 
 const fmtCurrency = (value: number) =>
@@ -98,9 +100,10 @@ function ManagementDashboard() {
             const firstEmp = employees[0] || { id: 'emp-demo', name: 'Alice Employee', email: 'alice@test.com' }
             switchRole('employee', firstEmp)
           }}
-          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-medium transition-colors self-start"
+          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-medium transition-colors self-start border border-white/5"
         >
-          <span>👷</span> Switch to Employee View
+          <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
+          <span>Switch to Employee View</span>
         </button>
       </div>
 
@@ -247,9 +250,10 @@ function EmployeeDashboard() {
 
         <button
           onClick={() => switchRole('company_owner')}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-medium transition-colors self-start"
+          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-medium transition-colors self-start border border-white/5"
         >
-          <span>👑</span> Switch to Owner View
+          <Shield className="w-3.5 h-3.5 text-blue-400" />
+          <span>Switch to Owner View</span>
         </button>
       </div>
 

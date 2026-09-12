@@ -98,7 +98,7 @@ export default function Navbar() {
             }`}
             title="Click to toggle between Company Owner and Employee persona"
           >
-            <span>{role === 'employee' ? '👷 Employee View' : '👑 Owner View'}</span>
+            <span>{role === 'employee' ? 'Employee View' : 'Owner View'}</span>
             <span className="text-[10px] text-white/50 underline">Switch</span>
           </button>
 
