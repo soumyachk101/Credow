@@ -43,10 +43,18 @@ export default function Landing() {
     const video = videoRef.current
     if (!video) return
 
-    const onCanPlay = () => {
+    const playAndFade = () => {
       setVideoReady(true)
       video.play().catch(() => {})
-      fadeVideo(video, 0.45, 500)
+      fadeVideo(video, 1, 500)
+    }
+
+    if (video.readyState >= 2) {
+      playAndFade()
+    }
+
+    const onCanPlay = () => {
+      playAndFade()
     }
 
     const onTimeUpdate = () => {
@@ -59,16 +67,18 @@ export default function Landing() {
       video.style.opacity = '0'
       setTimeout(() => {
         video.currentTime = 0
-        video.play().then(() => fadeVideo(video, 0.45, 500)).catch(() => {})
+        video.play().then(() => fadeVideo(video, 1, 500)).catch(() => {})
       }, 100)
     }
 
     video.addEventListener('canplay', onCanPlay)
+    video.addEventListener('loadeddata', onCanPlay)
     video.addEventListener('timeupdate', onTimeUpdate)
     video.addEventListener('ended', onEnded)
 
     return () => {
       video.removeEventListener('canplay', onCanPlay)
+      video.removeEventListener('loadeddata', onCanPlay)
       video.removeEventListener('timeupdate', onTimeUpdate)
       video.removeEventListener('ended', onEnded)
     }
@@ -80,13 +90,14 @@ export default function Landing() {
           HERO SECTION
       ══════════════════════════════════════════════════════════ */}
       <section className="relative min-h-screen overflow-hidden flex flex-col justify-between">
-        {/* Background Video with Cinematic Dark Treatment */}
+        {/* Background Video with Original Full Visibility */}
         <video
           ref={videoRef}
-          className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none"
-          style={{ opacity: 0 }}
+          className="absolute inset-0 w-full h-full object-cover object-bottom pointer-events-none"
+          style={{ opacity: 1 }}
           muted
           autoPlay
+          loop
           playsInline
           preload="auto"
         >
@@ -96,9 +107,8 @@ export default function Landing() {
           />
         </video>
 
-        {/* Multi-layered dark & radial glow overlay */}
-        <div className="absolute inset-0 bg-black/65 backdrop-blur-[1px]" />
-        <div className="absolute inset-0 bg-radial from-transparent via-black/40 to-black pointer-events-none" />
+        {/* Clean dark overlay for readability (exact original balance) */}
+        <div className="absolute inset-0 bg-black/40 pointer-events-none" />
 
         {/* Navbar */}
         <header className="relative z-20 px-6 py-6">

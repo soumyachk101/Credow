@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowRight, CheckCircle2, Code2, Cpu, FileTerminal, ShieldAlert, Sparkles } from 'lucide-react'
+import { ArrowRight, CheckCircle2, Cpu, Sparkles } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 export default function FeaturedVideoSection() {
-  const [activeTab, setActiveTab] = useState<'payload' | 'tx' | 'lifecycle'>('payload')
+  const [activeTab, setActiveTab] = useState<'payload' | 'tx'>('payload')
 
   const steps = [
     {
@@ -94,7 +94,58 @@ Content-Type: application/json
           </p>
         </motion.div>
 
-        {/* Video & Terminal Interactive Showcase */}
+        {/* ══════════════════════════════════════════════════════════
+            FEATURED VIDEO 1 (Cinematic Aspect-Video Container)
+        ══════════════════════════════════════════════════════════ */}
+        <motion.div
+          initial={{ opacity: 0, y: 50 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-100px' }}
+          transition={{ duration: 0.9 }}
+          className="relative rounded-3xl overflow-hidden aspect-video mb-12 border border-white/10 shadow-2xl"
+        >
+          <video
+            className="w-full h-full object-cover"
+            muted
+            autoPlay
+            loop
+            playsInline
+            preload="auto"
+          >
+            <source
+              src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260402_054547_9875cfc5-155a-4229-8ec8-b7ba7125cbf8.mp4"
+              type="video/mp4"
+            />
+          </video>
+
+          {/* Gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent pointer-events-none" />
+
+          {/* Bottom overlay content */}
+          <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10 flex flex-col md:flex-row items-end md:items-center justify-between gap-6 z-10">
+            <div className="liquid-glass rounded-2xl p-6 md:p-8 max-w-lg border border-white/15 backdrop-blur-xl">
+              <div className="flex items-center gap-2 text-emerald-400 text-xs tracking-widest uppercase mb-2">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>The x402 Micropayment Engine</span>
+              </div>
+              <p className="text-white text-sm md:text-base leading-relaxed">
+                Machine-readable HTTP 402 responses turn corporate allowances into sub-3-second atomic settlement on Algorand with zero manual paperwork.
+              </p>
+            </div>
+
+            <Link
+              to="/claims"
+              className="liquid-glass hover:bg-white/10 text-white rounded-full px-8 py-3.5 text-xs font-semibold uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-2 border border-white/20 group backdrop-blur-xl shadow-lg"
+            >
+              <span>Try Live x402 Claim</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform text-emerald-400" />
+            </Link>
+          </div>
+        </motion.div>
+
+        {/* ══════════════════════════════════════════════════════════
+            TERMINAL & LIFECYCLE BREAKDOWN
+        ══════════════════════════════════════════════════════════ */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
           {/* Left Column: Lifecycle Steps */}
           <motion.div
@@ -104,7 +155,7 @@ Content-Type: application/json
             transition={{ duration: 0.7 }}
             className="lg:col-span-5 flex flex-col justify-between space-y-4"
           >
-            {steps.map((step, idx) => (
+            {steps.map((step) => (
               <div
                 key={step.num}
                 className="liquid-glass rounded-2xl p-5 md:p-6 relative group hover:border-emerald-500/40 transition-all duration-300"
@@ -120,24 +171,6 @@ Content-Type: application/json
                 </div>
               </div>
             ))}
-
-            <div className="pt-2">
-              <Link
-                to="/claims"
-                className="liquid-glass liquid-glass-hover rounded-2xl px-6 py-4 flex items-center justify-between text-white group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                    <Sparkles className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium">Try Live x402 Claim Demo</div>
-                    <div className="text-xs text-white/40">Test with mock or connected wallet</div>
-                  </div>
-                </div>
-                <ArrowRight className="w-4 h-4 text-white/50 group-hover:text-white group-hover:translate-x-1 transition-all" />
-              </Link>
-            </div>
           </motion.div>
 
           {/* Right Column: Code & Proof Terminal */}
