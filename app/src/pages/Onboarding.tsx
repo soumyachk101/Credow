@@ -285,8 +285,8 @@ export default function Onboarding() {
  return (
  <div className="space-y-6">
  <div>
- <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Create Your Company</h2>
- <p className="text-zinc-400 mt-2 text-sm">Set up your company workspace to get started.</p>
+ <h2 className="text-3xl font-semibold text-white tracking-tight" style={{ fontFamily: "'Instrument Serif', serif" }}>Create Your Company</h2>
+ <p className="text-white/40 mt-2 text-sm">Set up your company workspace to get started.</p>
  </div>
  <div className="space-y-4">
  <Field label="Company Name" value={data.companyName} onChange={v => updateData({ companyName: v })} placeholder="Acme Corporation" />
@@ -298,8 +298,8 @@ export default function Onboarding() {
  return (
  <div className="space-y-6">
  <div>
- <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Add Your Team</h2>
- <p className="text-zinc-400 mt-2 text-sm">Create your first team and assign a manager.</p>
+ <h2 className="text-3xl font-semibold text-white tracking-tight" style={{ fontFamily: "'Instrument Serif', serif" }}>Add Your Team</h2>
+ <p className="text-white/40 mt-2 text-sm">Create your first team and assign a manager.</p>
  </div>
  <div className="space-y-4">
  <Field label="Team Name" value={data.teamName} onChange={v => updateData({ teamName: v })} placeholder="Engineering" />
@@ -311,8 +311,8 @@ export default function Onboarding() {
  return (
  <div className="space-y-6">
  <div>
- <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Invite Employees</h2>
- <p className="text-zinc-400 mt-2 text-sm">Add team members who will use API credits.</p>
+ <h2 className="text-3xl font-semibold text-white tracking-tight" style={{ fontFamily: "'Instrument Serif', serif" }}>Invite Employees</h2>
+ <p className="text-white/40 mt-2 text-sm">Add team members who will use API credits.</p>
  </div>
  <EmployeeForm onAdd={(name, email) => updateData({ employees: [...data.employees, { name: name.trim(), email: email.trim().toLowerCase() }] })} />
  {data.employees.length > 0 && (
@@ -335,8 +335,8 @@ export default function Onboarding() {
  return (
  <div className="space-y-6">
  <div>
- <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Set Your Budget</h2>
- <p className="text-zinc-400 mt-2 text-sm">Define the total credit pool for your company.</p>
+ <h2 className="text-3xl font-semibold text-white tracking-tight" style={{ fontFamily: "'Instrument Serif', serif" }}>Set Your Budget</h2>
+ <p className="text-white/40 mt-2 text-sm">Define the total credit pool for your company.</p>
  </div>
  <div>
  <label className="block text-xs font-medium text-white/40 mb-1.5 uppercase tracking-wider">Total Credit Pool ($)</label>
@@ -348,20 +348,20 @@ export default function Onboarding() {
  case 5:
  return (
  <div className="text-center space-y-6 py-8">
- <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto text-emerald-400">
- <CheckCircle className="w-8 h-8 text-emerald-400" />
+ <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto">
+ <CheckCircle className="w-8 h-8 text-white/70" />
  </div>
  <div>
- <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">You're All Set!</h2>
- <p className="text-zinc-400 mt-2 text-sm max-w-md mx-auto">Your company <span className="text-white font-medium">{data.companyName}</span> has been created with {data.employees.length} employees and a budget of <span className="text-emerald-400 font-mono font-medium">${parseFloat(data.budgetPool || '0').toLocaleString()}</span>.</p>
+ <h2 className="text-3xl font-semibold text-white tracking-tight" style={{ fontFamily: "'Instrument Serif', serif" }}>You're All Set!</h2>
+ <p className="text-white/40 mt-2 text-sm max-w-md mx-auto">Your company <span className="text-white/80 font-medium">{data.companyName}</span> has been created with {data.employees.length} employees and a budget of <span className="text-white/80 font-medium">${parseFloat(data.budgetPool || '0').toLocaleString()}</span>.</p>
  </div>
- <button onClick={() => navigate('/dashboard')} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-semibold shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all">
+ <button onClick={() => navigate('/dashboard')} className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white text-black text-sm font-medium hover:bg-white/90 transition-colors">
  Go to Dashboard <ArrowRight className="w-4 h-4" />
  </button>
  </div>
  )
  }
- }
+}
 
  if (currentStep === 5) return <div className="min-h-screen bg-black">{renderStep()}</div>
 
@@ -373,13 +373,13 @@ export default function Onboarding() {
  {STEPS.map((s, index) => (
  <div key={s.step} className="flex items-center">
  <div className="flex flex-col items-center">
- <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${currentStep >= s.step ? 'bg-emerald-500 text-black font-semibold shadow-[0_0_15px_rgba(16,185,129,0.35)]' : 'bg-white/5 text-zinc-500'}`}>
+ <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${currentStep >= s.step ? 'bg-white text-black' : 'bg-white/5 text-white/30'}`}>
  <s.icon className="w-4 h-4" />
  </div>
- <span className="text-xs mt-1.5 text-zinc-400 font-mono">{s.label}</span>
+ <span className="text-xs mt-1.5 text-white/40">{s.label}</span>
  </div>
  {index < STEPS.length - 1 && (
- <div className={`flex-1 h-px mx-3 transition-colors ${currentStep > s.step ? 'bg-emerald-500/50' : 'bg-white/10'}`} />
+ <div className={`flex-1 h-px mx-3 transition-colors ${currentStep > s.step ? 'bg-white/20' : 'bg-white/5'}`} />
  )}
  </div>
  ))}
@@ -388,13 +388,13 @@ export default function Onboarding() {
  <div className="liquid-glass rounded-2xl p-8">
  {renderStep()}
  {error && (
- <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
- <p className="text-sm text-red-400">{error}</p>
+ <div className="mt-4 p-3 bg-red-500/10 border border-red-500/10 rounded-xl">
+ <p className="text-sm text-red-300">{error}</p>
  </div>
  )}
  <div className="flex justify-between mt-8">
- <button onClick={prevStep} disabled={currentStep === 1} className="px-4 py-2 text-sm text-zinc-400 hover:text-white disabled:opacity-30 transition-colors">Back</button>
- <button onClick={currentStep === 1 ? handleCreateCompany : currentStep === 2 ? handleCreateTeam : currentStep === 3 ? handleInviteEmployees : handleSetBudget} disabled={loading} className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-semibold shadow-[0_0_20px_rgba(16,185,129,0.3)] disabled:opacity-30 transition-all">
+ <button onClick={prevStep} disabled={currentStep === 1} className="px-4 py-2 text-sm text-white/50 hover:text-white disabled:opacity-30 transition-colors">Back</button>
+ <button onClick={currentStep === 1 ? handleCreateCompany : currentStep === 2 ? handleCreateTeam : currentStep === 3 ? handleInviteEmployees : handleSetBudget} disabled={loading} className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-white text-black text-sm font-medium hover:bg-white/90 disabled:opacity-30 transition-colors">
  {loading ? 'Please wait...' : <>{currentStep === 4 ? 'Complete Setup' : 'Continue'} <ChevronRight className="w-4 h-4" /></>}
  </button>
  </div>
@@ -422,7 +422,7 @@ function EmployeeForm({ onAdd }: { onAdd: (name: string, email: string) => void 
  <form onSubmit={handleSubmit} className="flex gap-2">
  <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Employee name" required className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/5 text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-white/20" />
  <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@company.com" required className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/5 text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-white/20" />
- <button type="submit" className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-semibold rounded-xl shadow-[0_0_12px_rgba(16,185,129,0.25)] transition-all">Add</button>
+ <button type="submit" className="px-4 py-2 bg-white text-black text-sm font-medium rounded-xl hover:bg-white/90 transition-colors">Add</button>
  </form>
  )
 }
