@@ -21,7 +21,6 @@ const ROLE_LINKS: Record<UserRole, { to: string; label: string; icon: typeof Lay
     { to: '/companies', label: 'Companies', icon: Globe },
     { to: '/teams', label: 'Teams', icon: Users },
     { to: '/claims', label: 'Claims & x402', icon: Zap },
-    { to: '/x402-demo', label: 'x402 Demo', icon: Globe },
   ],
   company_owner: [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -29,19 +28,16 @@ const ROLE_LINKS: Record<UserRole, { to: string; label: string; icon: typeof Lay
     { to: '/yield', label: 'Yield', icon: Wallet },
     { to: '/teams', label: 'Teams', icon: Users },
     { to: '/claims', label: 'Claims & x402', icon: Zap },
-    { to: '/x402-demo', label: 'x402 Demo', icon: Globe },
   ],
   manager: [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/allocations', label: 'Allocations', icon: Users },
     { to: '/yield', label: 'Yield', icon: Wallet },
     { to: '/claims', label: 'Claims & x402', icon: Zap },
-    { to: '/x402-demo', label: 'x402 Demo', icon: Globe },
   ],
   employee: [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/claims', label: 'Claim Credits', icon: Zap },
-    { to: '/x402-demo', label: 'x402 Demo', icon: Globe },
   ],
 }
 

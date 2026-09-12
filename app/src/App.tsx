@@ -12,7 +12,7 @@ import {
 } from '@txnlab/use-wallet-ui-react'
 import { getKmdConfigFromViteEnvironment, getNetwork } from './utils/algorand'
 import ProtectedRoute from './components/ProtectedRoute'
-import Navbar from './components/Navbar'
+import Sidebar from './components/Sidebar'
 import Landing from './pages/Landing'
 import Onboarding from './pages/Onboarding'
 import Dashboard from './pages/Dashboard'
@@ -21,7 +21,7 @@ import Yield from './pages/Yield'
 import Claims from './pages/Claims'
 import Companies from './pages/Companies'
 import Teams from './pages/Teams'
-import X402Demo from './pages/X402Demo'
+import Employees from './pages/Employees'
 
 const network = getNetwork()
 const algodConfig = {
@@ -137,6 +137,15 @@ export default function App() {
  />
 
  <Route
+ path="/employees"
+ element={
+ <ProtectedRoute allowedRoles={['company_owner', 'manager']}>
+ <EmployeesPage />
+ </ProtectedRoute>
+ }
+ />
+
+ <Route
  path="/companies"
  element={
  <ProtectedRoute allowedRoles={['super_admin']}>
@@ -145,7 +154,7 @@ export default function App() {
  }
  />
 
- <Route path="/x402-demo" element={<X402Demo />} />
+ <Route path="/x402-demo" element={<Navigate to="/claims" replace />} />
  <Route path="*" element={<Navigate to="/" replace />} />
  </Routes>
  </BrowserRouter>
@@ -156,11 +165,14 @@ export default function App() {
 
 function PageShell({ children }: { children: React.ReactNode }) {
  return (
- <div className="min-h-screen bg-black">
- <Navbar />
- <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+ <div className="min-h-screen bg-black text-white flex flex-col md:flex-row">
+ <Sidebar />
+ <div className="hidden md:block md:w-64 lg:w-72 md:shrink-0" aria-hidden="true" />
+ <main className="flex-1 min-w-0 px-4 sm:px-8 py-6 md:py-8 overflow-y-auto">
+ <div className="max-w-7xl mx-auto">
  {children}
  </div>
+ </main>
  </div>
  )
 }
@@ -210,6 +222,16 @@ function TeamsPage() {
  <ProtectedRoute allowedRoles={['company_owner', 'manager']}>
  <PageShell>
  <Teams />
+ </PageShell>
+ </ProtectedRoute>
+ )
+}
+
+function EmployeesPage() {
+ return (
+ <ProtectedRoute allowedRoles={['company_owner', 'manager']}>
+ <PageShell>
+ <Employees />
  </PageShell>
  </ProtectedRoute>
  )
