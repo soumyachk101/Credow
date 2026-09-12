@@ -1,0 +1,916 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>CreditFlow — System Architecture</title>
+<style>
+ :root {
+ --bg: #f8f9fa;
+ --fg: #1a1a2e;
+ --muted: #6b7280;
+ --accent: #2563eb;
+ --accent2: #7c3aed;
+ --card: #ffffff;
+ --border: #e5e7eb;
+ --layer-web3: #dbeafe;
+ --layer-web2: #fef3c7;
+ --layer-frontend: #ede9fe;
+ --layer-backend: #d1fae5;
+ --layer-db: #ffe4e6;
+ --layer-chain: #ccfbf1;
+ --arrow: #6b7280;
+ }
+ @media (prefers-color-scheme: dark) {
+ :root {
+ --bg: #0f172a;
+ --fg: #e2e8f0;
+ --muted: #94a3b8;
+ --accent: #60a5fa;
+ --accent2: #a78bfa;
+ --card: #1e293b;
+ --border: #334155;
+ --layer-web3: #1e3a5f;
+ --layer-web2: #3d3520;
+ --layer-frontend: #2d2050;
+ --layer-backend: #1a3d2e;
+ --layer-db: #3d2025;
+ --layer-chain: #1a3d35;
+ --arrow: #94a3b8;
+ }
+ }
+ * { box-sizing: border-box; margin: 0; padding: 0; }
+ body {
+ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+ background: var(--bg);
+ color: var(--fg);
+ padding: 2rem 1rem;
+ line-height: 1.5;
+ }
+ .container { max-width: 1400px; margin: 0 auto; }
+ h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.25rem; }
+ .subtitle { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+
+ /* ── System Diagram ── */
+ .diagram-wrap {
+ background: var(--card);
+ border: 1px solid var(--border);
+ border-radius: 12px;
+ padding: 1.5rem;
+ margin-bottom: 2rem;
+ overflow-x: auto;
+ }
+ .diagram-title {
+ font-size: 0.8rem;
+ text-transform: uppercase;
+ letter-spacing: 0.05em;
+ color: var(--muted);
+ margin-bottom: 1rem;
+ font-weight: 600;
+ }
+
+ svg.diagram { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+
+ /* ── Flow Sections ── */
+ .flow-section {
+ background: var(--card);
+ border: 1px solid var(--border);
+ border-radius: 12px;
+ padding: 1.5rem;
+ margin-bottom: 1.5rem;
+ }
+ .flow-section h2 {
+ font-size: 1.15rem;
+ font-weight: 600;
+ margin-bottom: 1rem;
+ display: flex;
+ align-items: center;
+ gap: 0.5rem;
+ }
+ .flow-section h2 .num {
+ display: inline-flex;
+ align-items: center;
+ justify-content: center;
+ width: 1.6rem; height: 1.6rem;
+ border-radius: 50%;
+ background: var(--accent);
+ color: #fff;
+ font-size: 0.75rem;
+ font-weight: 700;
+ flex-shrink: 0;
+ }
+ .flow-steps {
+ display: flex;
+ flex-wrap: wrap;
+ gap: 0.5rem;
+ align-items: center;
+ }
+ .flow-step {
+ background: var(--bg);
+ border: 1px solid var(--border);
+ border-radius: 8px;
+ padding: 0.6rem 0.9rem;
+ font-size: 0.82rem;
+ font-weight: 500;
+ white-space: nowrap;
+ }
+ .flow-step.highlight {
+ background: var(--layer-web3);
+ border-color: var(--accent);
+ font-weight: 600;
+ }
+ .flow-arrow {
+ color: var(--muted);
+ font-size: 1.1rem;
+ flex-shrink: 0;
+ }
+ .flow-label {
+ font-size: 0.72rem;
+ color: var(--muted);
+ text-align: center;
+ margin-top: 0.35rem;
+ font-style: italic;
+ }
+
+ /* ── Data Model Table ── */
+ .table-wrap { overflow-x: auto; margin-top: 0.75rem; }
+ table {
+ width: 100%;
+ border-collapse: collapse;
+ font-size: 0.82rem;
+ }
+ th {
+ text-align: left;
+ padding: 0.5rem 0.75rem;
+ background: var(--bg);
+ border-bottom: 2px solid var(--border);
+ font-weight: 600;
+ color: var(--muted);
+ text-transform: uppercase;
+ font-size: 0.7rem;
+ letter-spacing: 0.04em;
+ }
+ td {
+ padding: 0.45rem 0.75rem;
+ border-bottom: 1px solid var(--border);
+ vertical-align: top;
+ }
+ tr:last-child td { border-bottom: none; }
+ code {
+ font-family: 'SF Mono', Monaco, monospace;
+ font-size: 0.78em;
+ background: var(--bg);
+ padding: 0.1em 0.35em;
+ border-radius: 4px;
+ border: 1px solid var(--border);
+ }
+
+ /* ── Legend ── */
+ .legend {
+ display: flex;
+ flex-wrap: wrap;
+ gap: 1rem;
+ margin-top: 1rem;
+ padding-top: 1rem;
+ border-top: 1px solid var(--border);
+ }
+ .legend-item {
+ display: flex;
+ align-items: center;
+ gap: 0.4rem;
+ font-size: 0.78rem;
+ color: var(--muted);
+ }
+ .legend-swatch {
+ width: 14px; height: 14px;
+ border-radius: 3px;
+ border: 1px solid var(--border);
+ flex-shrink: 0;
+ }
+
+ @media (max-width: 768px) {
+ body { padding: 1rem 0.5rem; }
+ h1 { font-size: 1.3rem; }
+ }
+</style>
+</head>
+<body>
+<div class="container">
+
+ <h1>CreditFlow — System Architecture</h1>
+ <p class="subtitle">Corporate API credit management with x402 payments and yield on Algorand</p>
+
+ <!-- ═══════════════════════════════════════════════════════════════ -->
+ <!-- SYSTEM DIAGRAM -->
+ <!-- ═══════════════════════════════════════════════════════════════ -->
+ <div class="diagram-wrap">
+ <div class="diagram-title">End-to-End System</div>
+ <svg class="diagram" viewBox="0 0 1200 780" role="img" aria-label="CreditFlow system architecture showing four layers: frontend React app, Express API server, Supabase database, and Algorand blockchain with x402 payment flow and yield vault contract.">
+ <defs>
+ <marker id="arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+ <polygon points="0 0, 8 3, 0 6" fill="#6b7280"/>
+ </marker>
+ <marker id="arr-blue" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+ <polygon points="0 0, 8 3, 0 6" fill="#2563eb"/>
+ </marker>
+ <marker id="arr-green" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+ <polygon points="0 0, 8 3, 0 6" fill="#059669"/>
+ </marker>
+ <marker id="arr-purple" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+ <polygon points="0 0, 8 3, 0 6" fill="#7c3aed"/>
+ </marker>
+ <marker id="arr-amber" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+ <polygon points="0 0, 8 3, 0 6" fill="#d97706"/>
+ </marker>
+ <filter id="shadow" x="-2%" y="-2%" width="104%" height="104%">
+ <feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity="0.08"/>
+ </filter>
+ </defs>
+
+ <!-- ─── Background Layer Labels ─── -->
+ <text x="600" y="18" text-anchor="middle" font-size="11" font-weight="700" fill="#6b7280" letter-spacing="0.08em">WEB3 SETTLEMENT LAYER</text>
+ <text x="600" y="195" text-anchor="middle" font-size="11" font-weight="700" fill="#6b7280" letter-spacing="0.08em">DATABASE LAYER</text>
+ <text x="600" y="355" text-anchor="middle" font-size="11" font-weight="700" fill="#6b7280" letter-spacing="0.08em">BACKEND API LAYER</text>
+ <text x="600" y="530" text-anchor="middle" font-size="11" font-weight="700" fill="#6b7280" letter-spacing="0.08em">FRONTEND LAYER</text>
+ <text x="600" y="700" text-anchor="middle" font-size="10" fill="#9ca3af">USER</text>
+
+ <!-- ══════════════════════════════════════════════════════════ -->
+ <!-- LAYER 1 — Algorand Blockchain -->
+ <!-- ══════════════════════════════════════════════════════════ -->
+ <!-- Chain background -->
+ <rect x="40" y="24" width="1120" height="150" rx="8" fill="#ccfbf1" stroke="#5eead4" stroke-width="1" stroke-dasharray="4 3"/>
+
+ <!-- x402 Payment Settlement -->
+ <rect x="60" y="42" width="320" height="120" rx="6" fill="#fff" stroke="#14b8a6" stroke-width="1.5" filter="url(#shadow)"/>
+ <text x="220" y="60" text-anchor="middle" font-size="11" font-weight="700" fill="#0f766e">x402 Payment Settlement</text>
+ <text x="220" y="76" text-anchor="middle" font-size="9.5" fill="#6b7280">USDC ASA transfer · Algorand exact scheme</text>
+ <line x1="75" y1="84" x2="365" y2="84" stroke="#e5e7eb" stroke-width="0.5"/>
+ <text x="75" y="97" font-size="8.5" fill="#6b7280">• HTTP 402 → USDC tx group</text>
+ <text x="75" y="110" font-size="8.5" fill="#6b7280">• Wallet signs (Pera / Lute)</text>
+ <text x="75" y="123" font-size="8.5" fill="#6b7280">• On-chain confirmation → tx hash</text>
+ <text x="75" y="136" font-size="8.5" fill="#6b7280">• ASA 31,566,704 (TestNet / MainNet)</text>
+
+ <!-- Yield Vault Contract -->
+ <rect x="400" y="42" width="340" height="120" rx="6" fill="#fff" stroke="#0891b2" stroke-width="1.5" filter="url(#shadow)"/>
+ <text x="570" y="60" text-anchor="middle" font-size="11" font-weight="700" fill="#0f766e">Yield Vault — CreditFlowYieldVault</text>
+ <text x="570" y="76" text-anchor="middle" font-size="9.5" fill="#6b7280">Puya-TS · BoxMap per-company positions</text>
+ <line x1="415" y1="84" x2="725" y2="84" stroke="#e5e7eb" stroke-width="0.5"/>
+ <text x="415" y="97" font-size="8.5" fill="#6b7280">• deposit(company, amount) — admin only</text>
+ <text x="415" y="110" font-size="8.5" fill="#6b7280">• claimYield(company) → returns accrued yield</text>
+ <text x="415" y="123" font-size="8.5" fill="#6b7280">• withdraw(company, amount) — admin only</text>
+ <text x="415" y="136" font-size="8.5" fill="#6b7280">• updateApy / togglePause — admin only</text>
+
+ <!-- Subscriber -->
+ <rect x="760" y="42" width="200" height="120" rx="6" fill="#fff" stroke="#14b8a6" stroke-width="1.5" filter="url(#shadow)"/>
+ <text x="860" y="60" text-anchor="middle" font-size="11" font-weight="700" fill="#0f766e">Event Subscriber</text>
+ <text x="860" y="76" text-anchor="middle" font-size="9.5" fill="#6b7280">algokit-subscriber · indexer + algod</text>
+ <line x1="775" y1="84" x2="945" y2="84" stroke="#e5e7eb" stroke-width="0.5"/>
+>
+ <text x="775" y="97" font-size="8.5" fill="#6b7280">• Watches lifecycle events</text>
+ <text x="775" y="110" font-size="8.5" fill="#6b7280">• NoOp / OptIn / CloseOut / Alert</text>
+ <text x="775" y="123" font-size="8.5" fill="#6b7280">• Watermark persistence</text>
+ <text x="775" y="136" font-size="8.5" fill="#6b7280">• ALERT on Update/Delete</text>
+
+ <!-- Algod / Indexer nodes -->
+ <rect x="1000" y="52" width="140" height="44" rx="5" fill="#f0fdfa" stroke="#5eead4" stroke-width="1"/>
+ <text x="1070" y="69" text-anchor="middle" font-size="9" font-weight="600" fill="#0f766e">Algod Node</text>
+ <text x="1070" y="83" text-anchor="middle" font-size="8" fill="#6b7280">REST / LocalNet</text>
+ <rect x="1000" y="106" width="140" height="44" rx="5" fill="#f0fdfa" stroke="#5eead4" stroke-width="1"/>
+ <text x="1070" y="123" text-anchor="middle" font-size="9" font-weight="600" fill="#0f766e">Indexer</text>
+ <text x="1070" y="137" text-anchor="middle" font-size="8" fill="#6b7280">Catch-up history</text>
+
+ <!-- Arrows: Chain ↔ Backend (conceptual) -->
+ <line x1="570" y1="162" x2="570" y2="196" stroke="#14b8a6" stroke-width="1.2" marker-end="url(#arr-green)" stroke-dasharray="3 2"/>
+ <text x="585" y="182" font-size="8" fill="#0f766e" font-style="italic">on-chain settlement</text>
+
+ <!-- ══════════════════════════════════════════════════════════ -->
+ <!-- LAYER 2 — Supabase Database -->
+ <!-- ══════════════════════════════════════════════════════════ -->
+ <rect x="40" y="200" width="1120" height="130" rx="8" fill="#ffe4e6" stroke="#fda4af" stroke-width="1" stroke-dasharray="4 3"/>
+
+ <!-- Supabase box -->
+ <rect x="460" y="218" width="280" height="94" rx="6" fill="#fff" stroke="#e11d48" stroke-width="1.5" filter="url(#shadow)"/>
+ <text x="600" y="238" text-anchor="middle" font-size="11" font-weight="700" fill="#9f1239">Supabase / PostgreSQL</text>
+ <text x="600" y="252" text-anchor="middle" font-size="9.5" fill="#6b7280">8 tables · RLS · Auth</text>
+ <line x1="475" y1="260" x2="725" y2="260" stroke="#e5e7eb" stroke-width="0.5"/>
+ <text x="475" y="273" font-size="8.5" fill="#6b7280">companies · teams · employees · allocations</text>
+ <text x="475" y="286" font-size="8.5" fill="#6b7280">yield_accounts · transactions · payment_records · profiles</text>
+ <text x="475" y="299" font-size="8.5" fill="#6b7280">Stored functions for yield calculation</text>
+
+ <!-- Arrow: Backend → DB -->
+ <line x1="570" y1="352" x2="570" y2="330" stroke="#059669" stroke-width="1.2" marker-end="url(#arr-green)"/>
+ <text x="582" y="345" font-size="8" fill="#059669">queries</text>
+
+ <!-- Arrow: Frontend → DB (direct for stores) -->
+ <line x1="300" y1="528" x2="300" y2="330" stroke="#7c3aed" stroke-width="1" marker-end="url(#arr-purple)" stroke-dasharray="3 2"/>
+ <text x="268" y="435" font-size="8" fill="#7c3aed" text-anchor="middle" transform="rotate(-90,268,435)">direct Supabase client</text>
+
+ <!-- Arrow: Frontend → Backend -->
+ <line x1="510" y1="530" x2="510" y2="424" stroke="#2563eb" stroke-width="1.2" marker-end="url(#arr-blue)" stroke-dasharray="4 3"/>
+ <text x="522" y="482" font-size="8" fill="#2563eb" text-anchor="middle" transform="rotate(-90,522,482)">REST API</text>
+
+ <!-- ══════════════════════════════════════════════════════════ -->
+ <!-- LAYER 3 — Express API -->
+ <!-- ══════════════════════════════════════════════════════════ -->
+ <rect x="40" y="362" width="1120" height="144" rx="8" fill="#d1fae5" stroke="#6ee7b7" stroke-width="1" stroke-dasharray="4 3"/>
+
+ <!-- Express API Server -->
+ <rect x="200" y="380" width="260" height="110" rx="6" fill="#fff" stroke="#059669" stroke-width="1.5" filter="url(#shadow)"/>
+ <text x="330" y="398" text-anchor="middle" font-size="11" font-weight="700" fill="#065f46">Express API Server :3001</text>
+ <text x="330" y="412" text-anchor="middle" font-size="9.5" fill="#6b7280">CORS · JWT auth · Zod validation</text>
+ <line x1="215" y1="420" x2="445" y2="420" stroke="#e5e7eb" stroke-width="0.5"/>
+ <text x="215" y="433" font-size="8.5" fill="#6b7280">authMiddleware → Supabase JWT</text>
+ <text x="215" y="446" font-size="8.5" fill="#6b7280">Route groups with company scoping</text>
+ <text x="215" y="459" font-size="8.5" fill="#6b7280">Atomic: allocation + transaction</text>
+ <text x="215" y="472" font-size="8.5" fill="#6b7280">Rollback on failure</text>
+
+ <!-- API Route Groups -->
+ <rect x="490" y="380" width="96" height="110" rx="5" fill="#fff" stroke="#10b981" stroke-width="1" filter="url(#shadow)"/>
+ <text x="538" y="397" text-anchor="middle" font-size="9" font-weight="600" fill="#065f46">Companies</text>
+ <text x="538" y="410" text-anchor="middle" font-size="8" fill="#6b7280">GET/POST/PATCH</text>
+ <text x="538" y="422" text-anchor="middle" font-size="8" fill="#6b7280">wallet_address</text>
+ <text x="538" y="434" font-size="8" fill="#6b7280">x402_config</text>
+ <text x="538" y="446" font-size="8" fill="#6b7280">credit_pool</text>
+ <text x="538" y="458" font-size="8" fill="#6b7280">yield_enabled</text>
+ <text x="538" y="470" font-size="8" fill="#6b7280">/api/companies</text>
+
+ <rect x="600" y="380" width="96" height="110" rx="5" fill="#fff" stroke="#10b981" stroke-width="1" filter="url(#shadow)"/>
+ <text x="648" y="397" text-anchor="middle" font-size="9" font-weight="600" fill="#065f46">Teams</text>
+ <text x="648" y="410" text-anchor="middle" font-size="8" fill="#6b7280">GET/POST/PATCH</text>
+ <text x="648" y="422" font-size="8" fill="#6b7280">name · budget_pool</text>
+ <text x="648" y="434" font-size="8" fill="#6b7280">manager_id</text>
+ <text x="648" y="446" font-size="8" fill="#6b7280">/api/teams</text>
+
+ <rect x="710" y="380" width="96" height="110" rx="5" fill="#fff" stroke="#10b981" stroke-width="1" filter="url(#shadow)"/>
+ <text x="758" y="397" text-anchor="middle" font-size="9" font-weight="600" fill="#065f46">Employees</text>
+ <text x="758" y="410" text-anchor="middle" font-size="8" fill="#6b7280">GET/POST/PATCH</text>
+ <text x="758" y="422" font-size="8" fill="#6b7280">name · email · role</text>
+ <text x="758" y="434" font-size="8" fill="#6b7280">wallet_address</text>
+ <text x="758" y="446" font-size="8" fill="#6b7280">status</text>
+ <text x="758" y="458" font-size="8" fill="#6b7280">bulk CSV import</text>
+ <text x="758" y="470" font-size="8" fill="#6b7280">/api/employees</text>
+
+ <rect x="820" y="380" width="96" height="110" rx="5" fill="#fff" stroke="#10b981" stroke-width="1" filter="url(#shadow)"/>
+ <text x="868" y="397" text-anchor="middle" font-size="9" font-weight="600" fill="#065f46">Allocations</text>
+ <text x="868" y="410" text-anchor="middle" font-size="8" fill="#6b7280">GET/POST/PATCH</text>
+ <text x="868" y="422" font-size="8" fill="#6b7280">claim / terminate</text>
+ <text x="868" y="434" font-size="8" fill="#6b7280">atomic tx</text>
+ <text x="868" y="446" font-size="8" fill="#6b7280">rollback</text>
+ <text x="868" y="470" font-size="8" fill="#6b7280">/api/allocations</text>
+
+ <rect x="930" y="380" width="96" height="110" rx="5" fill="#fff" stroke="#10b981" stroke-width="1" filter="url(#shadow)"/>
+ <text x="978" y="397" text-anchor="middle" font-size="9" font-weight="600" fill="#065f46">Payments</text>
+ <text x="978" y="410" text-anchor="middle" font-size="8" fill="#6b7280">POST → 402</text>
+ <text x="978" y="422" font-size="8" fill="#6b7280">x402 payment</text>
+ <text x="978" y="434" font-size="8" fill="#6b7280">retry failed</text>
+ <text x="978" y="446" font-size="8" fill="#6b7280">idempotency</text>
+ <text x="978" y="470" font-size="8" fill="#6b7280">/api/payments</text>
+
+ <!-- ══════════════════════════════════════════════════════════ -->
+ <!-- LAYER 4 — React Frontend -->
+ <!-- ══════════════════════════════════════════════════════════ -->
+ <rect x="40" y="536" width="1120" height="158" rx="8" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1" stroke-dasharray="4 3"/>
+
+ <!-- React SPA -->
+ <rect x="60" y="554" width="220" height="120" rx="6" fill="#fff" stroke="#7c3aed" stroke-width="1.5" filter="url(#shadow)"/>
+ <text x="170" y="572" text-anchor="middle" font-size="11" font-weight="700" fill="#5b21b6">React SPA (Vite)</text>
+ <text x="170" y="586" text-anchor="middle" font-size="9.5" fill="#6b7280">React Router v7 · Tailwind v4</text>
+ <line x1="75" y1="594" x2="265" y2="594" stroke="#e5e7eb" stroke-width="0.5"/>
+ <text x="75" y="607" font-size="8.5" fill="#6b7280">Landing / Onboarding</text>
+ <text x="75" y="620" font-size="8.5" fill="#6b7280">Dashboard · Allocations</text>
+ <text x="75" y="633" font-size="8.5" fill="#6b7280">Yield · Claims (x402)</text>
+ <text x="75" y="646" font-size="8.5" fill="#6b7280">Dark mode · i18n-ready</text>
+
+ <!-- Zustand Stores -->
+ <rect x="300" y="554" width="200" height="120" rx="6" fill="#fff" stroke="#7c3aed" stroke-width="1.5" filter="url(#shadow)"/>
+ <text x="400" y="572" text-anchor="middle" font-size="11" font-weight="700" fill="#5b21b6">Zustand Stores</text>
+ <text x="400" y="586" text-anchor="middle" font-size="9.5" fill="#6b7280">Client-side state management</text>
+ <line x1="315" y1="594" x2="485" y2="594" stroke="#e5e7eb" stroke-width="0.5"/>
+ <text x="315" y="607" font-size="8.5" fill="#6b7280">authStore — user, login, logout</text>
+ <text x="315" y="620" font-size="8.5" fill="#6b7280">allocationStore — CRUD, claim</text>
+ <text x="315" y="633" font-size="8.5" fill="#6b7280">yieldStore — calc, distribute</text>
+ <text x="315" y="646" font-size="8.5" fill="#6b7280">paymentStore — x402 records</text>
+
+ <!-- x402 Service Layer -->
+ <rect x="520" y="554" width="260" height="120" rx="6" fill="#fff" stroke="#7c3aed" stroke-width="1.5" filter="url(#shadow)"/>
+ <text x="650" y="572" text-anchor="middle" font-size="11" font-weight="700" fill="#5b21b6">x402 Service Layer</text>
+ <text x="650" y="586" text-anchor="middle" font-size="9.5" fill="#6b7280">Payment protocol · Wallet integration</text>
+ <line x1="535" y1="594" x2="765" y2="594" stroke="#e5e7eb" stroke-width="0.5"/>
+ <text x="535" y="607" font-size="8.5" fill="#6b7280">X402Service — create / verify / settle</text>
+ <text x="535" y="620" font-size="8.5" fill="#6b7280">buildX402PaymentGroup()</text>
+ <text x="535" y="633" font-size="8.5" fill="#6b7280">serializeAuthorizationForSigning()</text>
+ <text x="535" y="646" font-size="8.5" fill="#6b7280">Circle Faucet (testnet USDC)</text>
+
+ <!-- Wallet -->
+ <rect x="800" y="554" width="180" height="120" rx="6" fill="#fff" stroke="#7c3aed" stroke-width="1.5" filter="url(#shadow)"/>
+ <text x="890" y="572" text-anchor="middle" font-size="11" font-weight="700" fill="#5b21b6">Algorand Wallets</text>
+ <text x="890" y="586" text-anchor="middle" font-size="9.5" fill="#6b7280">@txnlab/use-wallet-react</text>
+ <line x1="815" y1="594" x2="965" y2="594" stroke="#e5e7eb" stroke-width="0.5"/>
+ <text x="815" y="607" font-size="8.5" fill="#6b7280">Pera (testnet / mainnet)</text>
+ <text x="815" y="620" font-size="8.5" fill="#6b7280">Lute (testnet / mainnet)</text>
+ <text x="815" y="633" font-size="8.5" fill="#6b7280">KMD (LocalNet)</text>
+ <text x="815" y="646" font-size="8.5" fill="#6b7280">transactionSigner for x402</text>
+
+ <!-- ══════════════════════════════════════════════════════════ -->
+ <!-- USER NODE -->
+ <!-- ══════════════════════════════════════════════════════════ -->
+ <rect x="530" y="720" width="140" height="40" rx="20" fill="#2563eb" stroke="#1d4ed8" stroke-width="1.5" filter="url(#shadow)"/>
+ <text x="600" y="737" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">Company Owner</text>
+ <text x="600" y="751" text-anchor="middle" font-size="8.5" fill="#bfdbfe">Manager · Employee</text>
+ <!-- User → Frontend -->
+ <line x1="600" y1="720" x2="600" y2="698" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr-blue)"/>
+
+ <!-- ══════════════════════════════════════════════════════════ -->
+ <!-- CROSS-LAYER ARROWS -->
+ <!-- ══════════════════════════════════════════════════════════ -->
+ <!-- Frontend → Backend (REST) -->
+ <line x1="400" y1="618" x2="460" y2="618" stroke="#2563eb" stroke-width="1.2" marker-end="url(#arr-blue)" stroke-dasharray="4 3"/>
+ <text x="420" y="612" font-size="7.5" fill="#2563eb" text-anchor="middle">REST/JSON</text>
+
+ <!-- Frontend → Supabase (direct) -->
+ <line x1="300" y1="614" x2="270" y2="330" stroke="#7c3aed" stroke-width="1" marker-end="url(#arr-purple)" stroke-dasharray="3 2"/>
+ <text x="248" y="480" font-size="7.5" fill="#7c3aed" text-anchor="middle" transform="rotate(-90,248,480)">direct Supabase client</text>
+
+ <!-- Frontend → Algorand (wallet) -->
+ <line x1="890" y1="618" x2="860" y2="162" stroke="#7c3aed" stroke-width="1.2" marker-end="url(#arr-purple)" stroke-dasharray="4 3"/>
+ <text x="910" y="400" font-size="7.5" fill="#7c3aed" text-anchor="middle" transform="rotate(-90,910,400)">wallet signer → algod</text>
+
+ <!-- Backend → Chain (contract calls) -->
+ <line x1="570" y1="424" x2="570" y2="330" stroke="#059669" stroke-width="1.2" marker-end="url(#arr-green)"/>
+ <text x="585" y="382" font-size="8" fill="#059669">on-chain calls</text>
+
+ <!-- x402 flow: Backend → 402 → Frontend -->
+ <line x1="860" y1="490" x2="860" y2="554" stroke="#d97706" stroke-width="1.5" marker-end="url(#arr-amber)" stroke-dasharray="5 3"/>
+ <text x="880" y="526" font-size="8" fill="#d97706">402 + payload</text>
+
+ <!-- x402 flow: Frontend → signed tx → Chain -->
+ <line x1="800" y1="614" x2="780" y2="614" stroke="#d97706" stroke-width="1.2" marker-end="url(#arr-amber)"/>
+ <text x="780" y="608" font-size="7.5" fill="#d97706" text-anchor="middle">USDC transfer</text>
+ <line x1="780" y1="614" x2="780" y2="162" stroke="#d97706" stroke-width="1.2" marker-end="url(#arr-amber)" stroke-dasharray="3 2"/>
+ <text x="800" y="400" font-size="7.5" fill="#d97706" text-anchor="middle" transform="rotate(-90,800,400)">signed tx submission</text>
+
+ <!-- Yield arrow: Contract → Backend -->
+ <line x1="680" y1="162" x2="680" y2="200" stroke="#0891b2" stroke-width="1" marker-end="url(#arr)" stroke-dasharray="3 2"/>
+ <text x="695" y="184" font-size="8" fill="#0891b2">yield data</text>
+
+ <!-- Yield arrow: Backend → Frontend -->
+ <line x1="670" y1="330" x2="670" y2="554" stroke="#7c3aed" stroke-width="1" marker-end="url(#arr-purple)" stroke-dasharray="3 2"/>
+ <text x="688" y="445" font-size="8" fill="#7c3aed" text-anchor="middle" transform="rotate(-90,688,445)">yield accounts</text>
+
+ <!-- Circle Faucet (external) -->
+ <rect x="1020" y="554" width="130" height="60" rx="5" fill="#fffbeb" stroke="#f59e0b" stroke-width="1" filter="url(#shadow)"/>
+ <text x="1085" y="572" text-anchor="middle" font-size="9" font-weight="600" fill="#92400e">Circle Faucet</text>
+ <text x="1085" y="585" text-anchor="middle" font-size="8" fill="#6b7280">Testnet USDC</text>
+ <text x="1085" y="598" text-anchor="middle" font-size="8" fill="#6b7280">REST API</text>
+ <line x1="980" y1="584" x2="1020" y2="584" stroke="#f59e0b" stroke-width="1" marker-end="url(#arr-amber)"/>
+
+ <!-- ══════════════════════════════════════════════════════════ -->
+ <!-- LEGEND -->
+ <!-- ══════════════════════════════════════════════════════════ -->
+ <line x1="40" y1="730" x2="1160" y2="730" stroke="#e5e7eb" stroke-width="0.5"/>
+ <rect x="60" y="738" width="12" height="8" rx="2" fill="#ccfbf1" stroke="#5eead4" stroke-width="0.8"/>
+ <text x="78" y="746" font-size="8" fill="#6b7280">Blockchain / On-chain</text>
+ <rect x="180" y="738" width="12" height="8" rx="2" fill="#dbeafe" stroke="#93c5fd" stroke-width="0.8"/>
+ <text x="198" y="746" font-size="8" fill="#6b7280">x402 Protocol Flow</text>
+ <rect x="280" y="738" width="12" height="8" rx="2" fill="#d1fae5" stroke="#6ee7b7" stroke-width="0.8"/>
+ <text x="298" y="746" font-size="8" fill="#6b7280">Backend API</text>
+ <rect x="380" y="738" width="12" height="8" rx="2" fill="#ffe4e6" stroke="#fda4af" stroke-width="0.8"/>
+ <text x="398" y="746" font-size="8" fill="#6b7280">Database</text>
+ <rect x="470" y="738" width="12" height="8" rx="2" fill="#ede9fe" stroke="#c4b5fd" stroke-width="0.8"/>
+ <text x="488" y="746" font-size="8" fill="#6b7280">Frontend</text>
+ <line x1="560" y1="742" x2="590" y2="742" stroke="#6b7280" stroke-width="1" marker-end="url(#arr)"/>
+ <text x="596" y="746" font-size="8" fill="#6b7280">Data flow</text>
+ <line x1="660" y1="742" x2="690" y2="742" stroke="#2563eb" stroke-width="1" stroke-dasharray="3 2" marker-end="url(#arr-blue)"/>
+ <text x="696" y="746" font-size="8" fill="#6b7280">REST API</text>
+ <line x1="770" y1="742" x2="800" y2="742" stroke="#7c3aed" stroke-width="1" stroke-dasharray="3 2" marker-end="url(#arr-purple)"/>
+ <text x="806" y="746" font-size="8" fill="#6b7280">Direct DB</text>
+ <line x1="880" y1="742" x2="910" y2="742" stroke="#d97706" stroke-width="1" stroke-dasharray="5 3" marker-end="url(#arr-amber)"/>
+ <text x="916" y="746" font-size="8" fill="#6b7280">x402 (402 / payment)</text>
+ </svg>
+
+ <div class="legend">
+ <div class="legend-item"><div class="legend-swatch" style="background:#ccfbf1;border-color:#5eead4"></div>Algorand blockchain (algod, indexer, smart contract)</div>
+ <div class="legend-item"><div class="legend-swatch" style="background:#dbeafe;border-color:#93c5fd"></div>x402 protocol flow (402 → sign → settle)</div>
+ <div class="legend-item"><div class="legend-swatch" style="background:#d1fae5;border-color:#6ee7b7"></div>Express API server with 7 route groups</div>
+ <div class="legend-item"><div class="legend-swatch" style="background:#ffe4e6;border-color:#fda4af"></div>Supabase / PostgreSQL with 8 tables + RLS</div>
+ <div class="legend-item"><div class="legend-swatch" style="background:#ede9fe;border-color:#c4b5fd"></div>React frontend with 6 pages + 4 stores</div>
+ <div class="legend-item"><span style="font-size:10px">━━</span> <span style="color:#2563eb">Solid</span> REST API calls</div>
+ <div class="legend-item"><span style="font-size:10px">╌╌</span> <span style="color:#7c3aed">Purple dashed</span> Direct Supabase client</div>
+ <div class="legend-item"><span style="font-size:10px">╌ ╌</span> <span style="color:#d97706">Amber dash-dot</span> x402 payment flow</div>
+ </div>
+ </div>
+
+ <!-- ═══════════════════════════════════════════════════════════════ -->
+ <!-- KEY DATA FLOWS -->
+ <!-- ═══════════════════════════════════════════════════════════════ -->
+ <div class="flow-section">
+ <h2><span class="num">1</span> Credit Allocation Lifecycle</h2>
+ <div class="flow-steps">
+ <div class="flow-step">Company Owner creates company</div>
+ <span class="flow-arrow">→</span>
+ <div class="flow-step">Onboarding wizard (5 steps)</div>
+ <span class="flow-arrow">→</span>
+ <div class="flow-step highlight">Manager creates allocation</div>
+ <span class="flow-arrow">→</span>
+ <div class="flow-step">DB: INSERT allocation + transaction</div>
+ <span class="flow-arrow">→</span>
+ <div class="flow-step">Employee sees unclaimed_credits</div>
+ </div>
+ <p class="flow-label">Allocation status: active → suspended → terminated. Unclaimed credits roll back to company on termination.</p>
+ </div>
+
+ <div class="flow-section">
+ <h2><span class="num">2</span> x402 Payment Flow (Algorand Exact Scheme)</h2>
+ <div class="flow-steps" style="flex-direction:column;align-items:stretch">
+ <div class="flow-steps">
+ <div class="flow-step">1. Employee clicks "Pay" in Claims page</div>
+ </div>
+ <div class="flow-steps">
+ <div class="flow-step">2. Frontend claims credits from allocation (DB update)</div>
+ </div>
+ <div class="flow-steps">
+ <div class="flow-step highlight">3. Build USDC ASA transfer (ASA 31,566,704)</div>
+ </div>
+ <div class="flow-steps">
+ <div class="flow-step">4. Wallet (Pera/Lute) signs via transactionSigner</div>
+ </div>
+ <div class="flow-steps">
+ <div class="flow-step">5. Submit signed tx to Algorand, wait for confirmation</div>
+ </div>
+ <div class="flow-steps">
+ <div class="flow-step">6. Update payment_record: pending → confirmed</div>
+ </div>
+ </div>
+ <p class="flow-label">Nonce = <code>allocation_id:service_id:timestamp</code> for idempotency. Faucet available for testnet USDC.</p>
+ </div>
+
+ <div class="flow-section">
+ <h2><span class="num">3</span> Yield Generation & Distribution</h2>
+ <div class="flow-steps">
+ <div class="flow-step">Unclaimed credits eligible (> $50, > 7 days)</div>
+ <span class="flow-arrow">→</span>
+ <div class="flow-step highlight">calculateYield() — simple interest</div>
+ <span class="flow-arrow">→</span>
+ <div class="flow-step">70% company_share · 30% employee_share</div>
+ <span class="flow-arrow">→</span>
+ <div class="flow-step">distributeYield() — credit employee balance</div>
+ <span class="flow-arrow">→</span>
+ <div class="flow-step">Immutable transaction record</div>
+ </div>
+ <p class="flow-label">APY capped at configurable basis points. Pause mechanism for emergencies. Simple interest (not compound) for legal safety.</p>
+ </div>
+
+ <div class="flow-section">
+ <h2><span class="num">4</span> Authentication & Authorization</h2>
+ <div class="flow-steps">
+ <div class="flow-step">Supabase Auth (Google OAuth / email+password)</div>
+ <span class="flow-arrow">→</span>
+ <div class="flow-step highlight">JWT in Authorization: Bearer header</div>
+ <span class="flow-arrow">→</span>
+ <div class="flow-step">authMiddleware verifies token</div>
+ <span class="flow-arrow">→</span>
+ <div class="flow-step">Every route scopes to company_id</div>
+ <span class="flow-arrow">→</span>
+ <div class="flow-step">RLS on Supabase for defense in depth</div>
+ </div>
+ <p class="flow-label">Roles: super_admin, company_owner, manager, employee. Wallet addresses optional on employee records.</p>
+ </div>
+
+ <!-- ═══════════════════════════════════════════════════════════════ -->
+ <!-- DATA MODEL -->
+ <!-- ═══════════════════════════════════════════════════════════════ -->
+ <div class="flow-section">
+ <h2><span class="num">5</span> Database Schema (8 Tables)</h2>
+ <div class="table-wrap">
+ <table>
+ <thead>
+ <tr>
+ <th>Table</th>
+ <th>Key Fields</th>
+ <th>Purpose</th>
+ <th>Relationships</th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr>
+ <td><code>profiles</code></td>
+ <td>id, email, name, role, company_id</td>
+ <td>Supabase Auth user profile</td>
+ <td>→ companies (owner)</td>
+ </tr>
+ <tr>
+ <td><code>companies</code></td>
+ <td>id, name, slug, owner_id, wallet_address, credit_pool, yield_enabled</td>
+ <td>Company workspace; top-level tenant</td>
+ <td>1:N teams, employees, allocations</td>
+ </tr>
+ <tr>
+ <td><code>teams</code></td>
+ <td>id, company_id, name, manager_id, budget_pool</td>
+ <td>Team grouping within company</td>
+ <td>N:1 company; 1:N employees, allocations</td>
+ </tr>
+ <tr>
+ <td><code>employees</code></td>
+ <td>id, company_id, team_id, name, email, role, wallet_address, status</td>
+ <td>Team members who consume credits</td>
+ <td>N:1 company/team; 1:N allocations</td>
+ </tr>
+ <tr>
+ <td><code>allocations</code></td>
+ <td>id, company_id, team_id, employee_id, total_credits, claimed_credits, unclaimed_credits, yield_eligible_balance, status, period_start, period_end</td>
+ <td>Core credit bucket per employee</td>
+ <td>N:1 employee/team/company; 1:N transactions, yield_accounts, payment_records</td>
+ </tr>
+ <tr>
+ <td><code>yield_accounts</code></td>
+ <td>id, allocation_id, company_id, employee_id, principal, yield_generated, company_share, employee_share, strategy, apy</td>
+ <td>Tracks yield per allocation</td>
+ <td>1:1 allocation</td>
+ </tr>
+ <tr>
+ <td><code>transactions</code></td>
+ <td>id, allocation_id, type, amount, from_entity, to_entity, tx_hash, metadata</td>
+ <td><strong>Immutable</strong> audit ledger</td>
+ <td>FK to allocations, company, team, employee</td>
+ </tr>
+ <tr>
+ <td><code>payment_records</code></td>
+ <td>id, allocation_id, service_id, amount, x402_tx_hash, status, consumed_at</td>
+ <td>x402 payment tracking</td>
+ <td>FK to allocations, company, employee</td>
+ </tr>
+ </tbody>
+ </table>
+ </div>
+ </div>
+
+ <!-- ═══════════════════════════════════════════════════════════════ -->
+ <!-- FRONTEND ARCHITECTURE -->
+ <!-- ═══════════════════════════════════════════════════════════════ -->
+ <div class="flow-section">
+ <h2><span class="num">6</span> Frontend Architecture</h2>
+ <div class="table-wrap">
+ <table>
+ <thead>
+ <tr>
+ <th>Layer</th>
+ <th>Technology</th>
+ <th>Files</th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr>
+ <td><strong>Routing</strong></td>
+ <td>React Router v7</td>
+ <td><code>App.tsx</code> — 5 routes + ProtectedRoute wrapper</td>
+ </tr>
+ <tr>
+ <td><strong>Pages</strong></td>
+ <td>React + Tailwind v4</td>
+ <td>Landing, Onboarding (5-step), Dashboard, Allocations, Yield, Claims</td>
+ </tr>
+ <tr>
+ <td><strong>State</strong></td>
+ <td>Zustand 5</td>
+ <td>authStore, allocationStore, yieldStore, paymentStore</td>
+ </tr>
+ <tr>
+ <td><strong>Wallet</strong></td>
+ <td>@txnlab/use-wallet-react</td>
+ <td>Pera, Lute (testnet/mainnet); KMD (LocalNet)</td>
+ </tr>
+ <tr>
+ <td><strong>x402 Service</strong></td>
+ <td>Custom class + utils</td>
+ <td>services/x402.ts, services/circleFaucet.ts, utils/algorandPayment.ts, utils/algorandBalance.ts, utils/x402.ts</td>
+ </tr>
+ <tr>
+ <td><strong>DB Access</strong></td>
+ <td>Supabase JS client</td>
+ <td>lib/supabase.ts — direct from stores + pages</td>
+ </tr>
+ <tr>
+ <td><strong>Smart Contract</strong></td>
+ <td>Puya-TS generated client</td>
+ <td>components/AppCalls.tsx — HelloWorld demo</td>
+ </tr>
+ </tbody>
+ </table>
+ </div>
+ </div>
+
+ <!-- ═══════════════════════════════════════════════════════════════ -->
+ <!-- SMART CONTRACT -->
+ <!-- ═══════════════════════════════════════════════════════════════ -->
+ <div class="flow-section">
+ <h2><span class="num">7</span> Yield Vault Smart Contract</h2>
+ <div class="table-wrap">
+ <table>
+ <thead>
+ <tr>
+ <th>Method</th>
+ <th>Type</th>
+ <th>Access</th>
+ <th>Purpose</th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr>
+ <td><code>create</code></td>
+ <td>@abimethod</td>
+ <td>Deploy (once)</td>
+ <td>Initialize global state: admin, USDC asset ID, APY cap, share ratios, min balance</td>
+ </tr>
+ <tr>
+ <td><code>deposit</code></td>
+ <td>@abimethod</td>
+ <td>Admin only</td>
+ <td>Deposit USDC into company position; updates BoxMap + total_deposits</td>
+ </tr>
+ <tr>
+ <td><code>claimYield</code></td>
+ <td>@abimethod</td>
+ <td>Any caller</td>
+ <td>Calculate and return accrued yield for a company position; resets last_claim_round</td>
+ </tr>
+ <tr>
+ <td><code>withdraw</code></td>
+ <td>@abimethod</td>
+ <td>Admin only</td>
+ <td>Withdraw principal from company position with balance validation</td>
+ </tr>
+ <tr>
+ <td><code>updateApy</code></td>
+ <td>@abimethod</td>
+ <td>Admin only</td>
+ <td>Set new APY (capped at apy_cap_bps)</td>
+ </tr>
+ <tr>
+ <td><code>togglePause</code></td>
+ <td>@abimethod</td>
+ <td>Admin only</td>
+ <td>Emergency pause — blocks deposit/claim/withdraw</td>
+ </tr>
+ <tr>
+ <td><code>getAvailableYield</code></td>
+ <td>@abimethod (readonly)</td>
+ <td>Any caller</td>
+ <td>View: current accrued yield for a company</td>
+ </tr>
+ <tr>
+ <td><code>getCompanyBalance</code></td>
+ <td>@abimethod (readonly)</td>
+ <td>Any caller</td>
+ <td>View: principal deposited for a company</td>
+ </tr>
+ <tr>
+ <td><code>getCompanyPosition</code></td>
+ <td>@abimethod (readonly)</td>
+ <td>Any caller</td>
+ <td>View: full PositionData for a company</td>
+ </tr>
+ </tbody>
+ </table>
+ </div>
+ <p style="margin-top:0.75rem;font-size:0.82rem;color:var(--muted)">
+ <strong>State storage:</strong> GlobalState for admin, USDC asset ID, totals, APY cap, pause flag.
+ <strong>BoxMap</strong> for per-company positions (key: <code>company_addr</code>, value: <code>PositionData</code> with deposited, last_deposit_round, last_claim_round, active).
+ Yield = <code>principal × APY_bps × rounds_elapsed / (6,312,000 × 10,000)</code>; employee share calculated from basis points.
+ </p>
+ </div>
+
+ <!-- ═══════════════════════════════════════════════════════════════ -->
+ <!-- TECHNOLOGY STACK -->
+ <!-- ═══════════════════════════════════════════════════════════════ -->
+ <div class="flow-section">
+ <h2><span class="num">8</span> Technology Stack</h2>
+ <div class="table-wrap">
+ <table>
+ <thead>
+ <tr>
+ <th>Layer</th>
+ <th>Technology</th>
+ <th>Key Packages</th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr>
+ <td>Frontend</td>
+ <td>React 19 + Vite 6 + TypeScript</td>
+ <td>react-router-dom 7, zustand 5, @txnlab/use-wallet-react, lucide-react</td>
+ </tr>
+ <tr>
+ <td>Styling</td>
+ <td>Tailwind CSS v4</td>
+ <td>Dark mode, responsive grid, custom components</td>
+ </tr>
+ <tr>
+ <td>Backend</td>
+ <td>Express 5 + TypeScript</td>
+ <td>cors, morgan, zod (validation), @supabase/supabase-js</td>
+ </tr>
+ <tr>
+ <td>Database</td>
+ <td>Supabase (PostgreSQL)</td>
+ <td>RLS policies, realtime, JWT auth</td>
+ </tr>
+ <tr>
+ <td>Blockchain</td>
+ <td>Algorand</td>
+ <td>algosdk, @algorandfoundation/algokit-utils, Puya-TS 1.3</td>
+ </tr>
+ <tr>
+ <td>Smart Contract</td>
+ <td>Puya-TS (TypeScript)</td>
+ <td>@algorandfoundation/algorand-typescript — Contract, BoxMap, arc4</td>
+ </tr>
+ <tr>
+ <td>x402 Protocol</td>
+ <td>Custom implementation</td>
+ <td>algosdk for ASA transfers, Ed25519 signing</td>
+ </tr>
+ <tr>
+ <td>Subscriber</td>
+ <td>algokit-subscriber-ts</td>
+ <td>Indexer catch-up + algod polling, watermark persistence</td>
+ </tr>
+ </tbody>
+ </table>
+ </div>
+ </div>
+
+ <!-- ═══════════════════════════════════════════════════════════════ -->
+ <!-- DEPLOYMENT -->
+ <!-- ═══════════════════════════════════════════════════════════════ -->
+ <div class="flow-section">
+ <h2><span class="num">9</span> Deployment Architecture</h2>
+ <div class="flow-steps" style="flex-direction:column;align-items:stretch;gap:0.75rem">
+ <div>
+ <div style="font-weight:600;font-size:0.85rem;margin-bottom:0.35rem">Production</div>
+ <div class="flow-steps">
+ <div class="flow-step">Vercel (SPA)</div>
+ <span class="flow-arrow">→</span>
+ <div class="flow-step">Render / Fly.io (API)</div>
+ <span class="flow-arrow">→</span>
+ <div class="flow-step">Supabase (DB + Auth)</div>
+ <span class="flow-arrow">→</span>
+ <div class="flow-step">Algorand Mainnet</div>
+ </div>
+ </div>
+ <div>
+ <div style="font-weight:600;font-size:0.85rem;margin-bottom:0.35rem">Development</div>
+ <div class="flow-steps">
+ <div class="flow-step">Vite Dev :5173</div>
+ <span class="flow-arrow">→</span>
+ <div class="flow-step">Express :3001</div>
+ <span class="flow-arrow">→</span>
+ <div class="flow-step">Supabase (local/dev)</div>
+ <span class="flow-arrow">→</span>
+ <div class="flow-step">Algorand LocalNet (Docker)</div>
+ </div>
+ </div>
+ <div>
+ <div style="font-weight:600;font-size:0.85rem;margin-bottom:0.35rem">Testnet</div>
+ <div class="flow-steps">
+ <div class="flow-step">Vercel preview</div>
+ <span class="flow-arrow">→</span>
+ <div class="flow-step">Express</div>
+ <span class="flow-arrow">→</span>
+ <div class="flow-step">Supabase</div>
+ <span class="flow-arrow">→</span>
+ <div class="flow-step">Algorand TestNet</div>
+ </div>
+ </div>
+ </div>
+ </div>
+
+ <!-- ═══════════════════════════════════════════════════════════════ -->
+ <!-- KEY DECISIONS -->
+ <!-- ═══════════════════════════════════════════════════════════════ -->
+ <div class="flow-section">
+ <h2><span class="num">10</span> Key Architectural Decisions</h2>
+ <div class="table-wrap">
+ <table>
+ <thead>
+ <tr><th>Decision</th><th>Rationale</th></tr>
+ </thead>
+ <tbody>
+ <tr><td>Web2 core + Web3 edge</td><td>Supabase handles auth/CRUD; Algorand only for settlement and yield — best UX + efficiency</td></tr>
+ <tr><td>Budget allocation, not payroll</td><td>Credits are not salaries — avoids tax/liability complexity</td></tr>
+ <tr><td>USDC over ALGO</td><td>Stable value, simpler accounting for corporate budgets</td></tr>
+ <tr><td>Simple interest yield</td><td>Legally cleaner than compound; easier to explain to users</td></tr>
+ <tr><td>70/30 yield split</td><td>Company gets bulk yield; employees get incentive without being compensation</td></tr>
+ <tr><td>Zustand over Redux</td><td>Less boilerplate, simpler API for 4 stores</td></tr>
+ <tr><td>BoxMap for positions</td><td>O(1) per-company lookups on-chain; scales to many companies</td></tr>
+ <tr><td>Immutable transaction ledger</td><td>INSERT-only with rollback on failure — financial integrity</td></tr>
+ <tr><td>x402 exact scheme</td><td>Standard HTTP 402 → on-chain payment; no custom protocol negotiation</td></tr>
+ <tr><td>Algorand over Stellar</td><td>Better TypeScript support (Puya-TS), simpler smart contracts</td></tr>
+ </tbody>
+ </table>
+ </div>
+ </div>
+
+</div>
+</body>
+</html>

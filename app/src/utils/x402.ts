@@ -1,62 +1,25 @@
 /**
- * x402 Payment Service
- * Handles HTTP 402 payment flow for API service consumption
+ * x402 protocol utilities — frontend helpers for parsing 402 responses,
+ * validating credits, and settling payments.
  */
 
-export interface X402PaymentRequest {
- amount: number
- currency: string
- resource: string
- description: string
- expiresAt: string
-}
+import type { X402PaymentRequirement, X402PaymentPayload } from '@/services/x402'
 
-export interface X402PaymentPayload {
- x402Version: number
- accepts: {
- scheme: string
- network: string
- maxAmount: string
- resource: string
- description: string
- mimeType: string
- payTo: string
- maxTimeoutSeconds: number
- }[]
-}
+// ---------------------------------------------------------------------------
+// Response parsing
+// ---------------------------------------------------------------------------
 
-export interface X402SettlementResult {
- success: boolean
- txHash?: string
- blockNumber?: number
- error?: string
+export interface X402ParsedResponse {
+ paymentRequired: boolean
+ payload?: X402PaymentPayload
+ requirement?: X402PaymentRequirement
 }
 
 /**
- * Generate an x402 payment payload for a service request
+ * Parse an HTTP response. If status is 402, extract the x402 payload
+ * from both JSON body and X-Payment-Required header.
  */
-export function generateX402Payload(payment: X402PaymentRequest): X402PaymentPayload {
- return {
- x402Version: 1,
- accepts: [
- {
- scheme: 'exact',
- network: 'algorand',
- maxAmount: payment.amount.toString(),
- resource: payment.resource,
- description: payment.description,
- mimeType: 'application/json',
- payTo: '', // Set dynamically based on service provider
- maxTimeoutSeconds: 300,
- },
- ],
- }
-}
-
-/**
- * Parse x402 response and extract payment requirements
- */
-export function parseX402Response(response: Response): { paymentRequired: boolean; payload?: X402PaymentPayload } {
+export async function parseX402Response(response: Response): Promise<X402ParsedResponse> {
  if (response.status !== 402) {
  return { paymentRequired: false }
  }
@@ -65,63 +28,65 @@ export function parseX402Response(response: Response): { paymentRequired: boolea
  const payload: X402PaymentPayload = await response.json()
  return { paymentRequired: true, payload }
  } catch {
+ // Try the header as a fallback
+ const header = response.headers.get('X-Payment-Required')
+ if (header) {
+ return { paymentRequired: true, requirement: JSON.parse(header) as X402PaymentRequirement }
+ }
  return { paymentRequired: false }
  }
 }
 
-/**
- * Simulate x402 payment settlement (demo mode)
- * In production, this would interact with the Algorand blockchain
- */
-export async function settleX402Payment(
- paymentRequirements: X402PaymentPayload['accepts'][0],
- amount: number
-): Promise<X402SettlementResult> {
- try {
- console.log('Initiating x402 payment:', {
- amount,
- resource: paymentRequirements.resource,
- network: paymentRequirements.network,
- })
+// ---------------------------------------------------------------------------
+// Credit validation
+// ---------------------------------------------------------------------------
 
- // Demo mode: simulate payment settlement
- await new Promise(resolve => setTimeout(resolve, 1000))
-
- return {
- success: true,
- txHash: `demo-${Date.now()}-${Math.random().toString(36).substring(7)}`,
- blockNumber: Math.floor(Date.now() / 4500), // Approx Algorand block time
- }
- } catch (error) {
- console.error('x402 payment failed:', error)
- return {
- success: false,
- error: error instanceof Error ? error.message : 'Payment settlement failed',
- }
- }
+export interface CreditValidationResult {
+ valid: boolean
+ error?: string
 }
 
 /**
- * Validate that an allocation has sufficient credits for a payment
+ * Validate that an allocation has sufficient credits for the requested
+ * service and amount. This is enforced client-side; the backend re-checks.
  */
 export function validateCredits(
  unclaimedCredits: number,
- claimedCredits: number,
  requestedAmount: number,
  maxSpend: number
- ): { valid: boolean; error?: string } {
+): CreditValidationResult {
  if (requestedAmount <= 0) {
  return { valid: false, error: 'Amount must be greater than 0' }
  }
-
- const available = unclaimedCredits - claimedCredits
- if (available < requestedAmount) {
- return { valid: false, error: `Insufficient credits. Available: ${available}, Requested: ${requestedAmount}` }
+ if (requestedAmount > unclaimedCredits) {
+ return { valid: false, error: `Insufficient credits. Available: ${unclaimedCredits.toFixed(2)}, requested: ${requestedAmount.toFixed(2)}` }
  }
-
  if (requestedAmount > maxSpend) {
- return { valid: false, error: `Amount exceeds maximum spend limit: ${maxSpend}` }
+ return { valid: false, error: `Amount exceeds maximum spend limit: ${maxSpend.toFixed(2)}` }
  }
-
  return { valid: true }
+}
+
+// ---------------------------------------------------------------------------
+// Formatting helpers
+// ---------------------------------------------------------------------------
+
+export function formatMicroUsd(amountMicro: string): string {
+ const micro = BigInt(amountMicro)
+ const dollars = Number(micro) / 1_000_000
+ return new Intl.NumberFormat('en-US', {
+ style: 'currency',
+ currency: 'USD',
+ minimumFractionDigits: 2,
+ maximumFractionDigits: 6,
+ }).format(dollars)
+}
+
+export function formatCurrency(value: number): string {
+ return new Intl.NumberFormat('en-US', {
+ style: 'currency',
+ currency: 'USD',
+ minimumFractionDigits: 2,
+ maximumFractionDigits: 2,
+ }).format(value)
 }

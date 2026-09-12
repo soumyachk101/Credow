@@ -121,3 +121,110 @@ export interface CSVImportResult {
  failed: number
  errors: Array<{ row: number; error: string }>
 }
+
+// ── API DTOs ─────────────────────────────────────────────────────────────
+
+export interface CreateCompanyInput {
+  name: string
+  slug: string
+  owner_id: string
+  credit_pool?: number
+  yield_enabled?: boolean
+}
+
+export interface UpdateCompanyInput {
+  name?: string
+  slug?: string
+  wallet_address?: string | null
+  x402_config?: Record<string, any> | null
+  credit_pool?: number
+  yield_enabled?: boolean
+}
+
+export interface CreateTeamInput {
+  company_id: string
+  name: string
+  budget_pool?: number
+  manager_id?: string
+}
+
+export interface UpdateTeamInput {
+  name?: string
+  budget_pool?: number
+  manager_id?: string
+}
+
+export interface CreateAllocationInput {
+  company_id: string
+  team_id?: string
+  employee_id: string
+  total_credits: number
+  period_start?: string
+  period_end?: string
+}
+
+export interface ClaimRequest {
+  allocation_id: string
+  service_id: string
+  service_name?: string
+  amount: number
+  nonce?: string
+}
+
+export interface ClaimResponse {
+  allocation_id: string
+  claimed_amount: number
+  unclaimed_credits: number
+  tx_hash?: string
+}
+
+export interface YieldCalculation {
+  allocation_id: string
+  gross_yield: number
+  company_share: number
+  employee_share: number
+  apy: number
+}
+
+export interface YieldDistribution {
+  allocation_id: string
+  amount: number
+  tx_hash?: string
+}
+
+export interface TransactionSummary {
+  totalAllocated: number
+  totalClaimed: number
+  totalYield: number
+  totalReclaimed: number
+}
+
+export interface X402PaymentRequest {
+  allocation_id: string
+  service_id: string
+  service_name?: string
+  amount: number
+  payment_proof?: {
+    tx_hash: string
+    sender_address: string
+    network: 'algorand'
+  }
+}
+
+export interface X402PaymentResponse {
+  success: boolean
+  data?: any
+  error?: string
+}
+
+export interface X402RequiredResponse {
+  error: 'Payment Required'
+  data: {
+    payment_id: string
+    amount: number
+    currency: string
+    pay_to: string
+    scheme: string
+    network: string
+  }
+}

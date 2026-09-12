@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CreditFlow System Architecture</title>
+<style>
+ :root {
+ --bg: #f8f9fb;
+ --fg: #1a1a2e;
+ --muted: #6b7280;
+ --border: #d1d5db;
+ --accent: #2563eb;
+ --accent2: #7c3aed;
+ --card: #ffffff;
+ --card-alt: #f0f4ff;
+ --arrow: #4b5563;
+ --tag: #e0e7ff;
+ --tag-fg: #3730a3;
+ --green: #059669;
+ --orange: #d97706;
+ --red: #dc2626;
+ }
+ @media (prefers-color-scheme: dark) {
+ :root {
+ --bg: #0f172a;
+ --fg: #e2e8f0;
+ --muted: #94a3b8;
+ --border: #334155;
+ --accent: #60a5fa;
+ --accent2: #a78bfa;
+ --card: #1e293b;
+ --card-alt: #1e1b4b;
+ --arrow: #94a3b8;
+ --tag: #312e81;
+ --tag-fg: #c7d2fe;
+ --green: #34d399;
+ --orange: #fbbf24;
+ --red: #f87171;
+ }
+ }
+ * { box-sizing: border-box; margin: 0; padding: 0; }
+ body {
+ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+ background: var(--bg);
+ color: var(--fg);
+ line-height: 1.5;
+ padding: 2rem 1rem;
+ }
+ .container { max-width: 1440px; margin: 0 auto; }
+ h1 {
+ font-size: 1.75rem; font-weight: 700; margin-bottom: 0.25rem;
+ }
+ .subtitle { color: var(--muted); font-size: 1rem; margin-bottom: 2rem; }
+ .diagram {
+ background: var(--card);
+ border: 1px solid var(--border);
+ border-radius: 12px;
+ padding: 1.5rem;
+ margin-bottom: 1.5rem;
+ overflow-x: auto;
+ }
+ .diagram h2 {
+ font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em;
+ color: var(--muted); margin-bottom: 1rem; font-weight: 600;
+ }
+ svg { display: block; width: 100%; height: auto; }
+ .note {
+ background: var(--card-alt);
+ border-left: 3px solid var(--accent);
+ padding: 0.75rem 1rem;
+ border-radius: 6px;
+ font-size: 0.875rem;
+ color: var(--muted);
+ margin-top: 0.5rem;
+ }
+</style>
+</head>
+<body>
+<div class="container">
+ <h1>CreditFlow — System Architecture</h1>
+ <p class="subtitle">End-to-end data flow for credit allocation, x402 payments, and yield vault operations on Algorand.</p>
+
+ <!-- ═══════════════════════════════════════════════════════════════ -->
+ <!-- LAYER 1: USERS -->
+ <!-- ═══════════════════════════════════════════════════════════════ -->
+ <div class="diagram">
+ <h2>Layer 1 — Actors</h2>
+ <svg viewBox="0 0 1200 120" role="img" aria-label="Actor layer: four user roles feeding into the frontend">
+ <defs>
+ <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+ <polygon points="0 0, 8 3, 0 6" fill="currentColor" opacity="0.5"/>
+ </marker>
+ </defs>
+ <!-- Roles -->
+ <rect x="20" y="15" width="220" height="90" rx="8" fill="var(--card-alt)" stroke="var(--border)" stroke-width="1.5"/>
+ <text x="130" y="38" text-anchor="middle" font-size="12" font-weight="600" fill="var(--fg)">Super Admin</text>
+ <text x="130" y="56" text-anchor="middle" font-size="10" fill="var(--muted)">Creates companies</text>
+ <text x="130" y="70" text-anchor="middle" font-size="10" fill="var(--muted)">Manages org-wide settings</text>
+ <text x="130" y="84" text-anchor="middle" font-size="10" fill="var(--muted)">Views all dashboards</text>
+
+ <rect x="270" y="15" width="220" height="90" rx="8" fill="var(--card-alt)" stroke="var(--border)" stroke-width="1.5"/>
+ <text x="380" y="38" text-anchor="middle" font-size="12" font-weight="600" fill="var(--fg)">Company Owner</text>
+ <text x="380" y="56" text-anchor="middle" font-size="10" fill="var(--muted)">Configures x402 + wallet</text>
+ <text x="380" y="70" text-anchor="middle" font-size="10" fill="var(--muted)">Sets yield strategy</text>
+ <text x="380" y="84" text-anchor="middle" font-size="10" fill="var(--muted)">Approves credit pools</text>
+
+ <rect x="520" y="15" width="220" height="90" rx="8" fill="var(--card-alt)" stroke="var(--border)" stroke-width="1.5"/>
+ <text x="630" y="38" text-anchor="middle" font-size="12" font-weight="600" fill="var(--fg)">Manager</text>
+ <text x="630" y="56" text-anchor="middle" font-size="10" fill="var(--muted)">Creates teams</text>
+ <text x="630" y="70" text-anchor="middle" font-size="10" fill="var(--muted)">Allocates credits to employees</text>
+ <text x="630" y="84" text-anchor="middle" font-size="10" fill="var(--muted)">Monitors team budgets</text>
+
+ <rect x="770" y="15" width="220" height="90" rx="8" fill="var(--card-alt)" stroke="var(--border)" stroke-width="1.5"/>
+ <text x="880" y="38" text-anchor="middle" font-size="12" font-weight="600" fill="var(--fg)">Employee</text>
+ <text x="880" y="56" text-anchor="middle" font-size="10" fill="var(--muted)">Views unclaimed credits</text>
+ <text x="880" y="70" text-anchor="middle" font-size="10" fill="var(--muted)">Signs x402 transactions</text>
+ <text x="880" y="84" text-anchor="middle" font-size="10" fill="var(--muted)">Funds wallet via faucet</text>
+
+ <!-- Arrows down -->
+ <line x1="130" y1="105" x2="130" y2="118" stroke="currentColor" opacity="0.4" stroke-width="1.5" marker-end="url(#arrow)"/>
+ <line x1="380" y1="105" x2="380" y2="118" stroke="currentColor" opacity="0.4" stroke-width="1.5" marker-end="url(#arrow)"/>
+ <line x1="630" y1="105" x2="630" y2="118" stroke="currentColor" opacity="0.4" stroke-width="1.5" marker-end="url(#arrow)"/>
+ <line x1="880" y1="105" x2="880" y2="118" stroke="currentColor" opacity="0.4" stroke-width="1.5" marker-end="url(#arrow)"/>
+ </svg>
+ </div>
+
+ <!-- ═══════════════════════════════════════════════════════════════ -->
+ <!-- LAYER 2: FRONTEND -->
+ <!-- ═══════════════════════════════════════════════════════════════ -->
+ <div class="diagram">
+ <h2>Layer 2 — Frontend (React + Vite + Zustand)</h2>
+ <svg viewBox="0 0 1200 440" role="img" aria-label="Frontend layer: pages, stores, services, and wallet">
+ <defs>
+ <marker id="arrow2" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+ <polygon points="0 0, 8 3, 0 6" fill="currentColor" opacity="0.4"/>
+ </marker>
+ <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+ <polygon points="0 0, 8 3, 0 6" fill="var(--accent)" opacity="0.7"/>
+ </marker>
+ </defs>
+
+ <!-- Column header -->
+ <text x="600" y="14" text-anchor="middle" font-size="11" fill="var(--muted)">All pages use the same service/store stack</text>
+
+ <!-- PAGES -->
+ <rect x="20" y="24" width="1140" height="200" rx="8" fill="var(--card-alt)" stroke="var(--border)" stroke-width="1"/>
+ <text x="40" y="42" font-size="11" font-weight="600" fill="var(--tag-fg)">PAGES</text>
+
+ <!-- Page boxes -->
+ <rect x="35" y="52" width="140" height="64" rx="6" fill="var(--card)" stroke="var(--border)"/>
+ <text x="105" y="72" text-anchor="middle" font-size="10" font-weight="600">Login</text>
+ <text x="105" y="86" text-anchor="middle" font-size="9" fill="var(--muted)">Supabase Auth</text>
+ <text x="105" y="98" text-anchor="middle" font-size="9" fill="var(--muted)">Role-based redirect</text>
+
+ <rect x="185" y="52" width="140" height="64" rx="6" fill="var(--card)" stroke="var(--border)"/>
+ <text x="255" y="72" text-anchor="middle" font-size="10" font-weight="600">Dashboard</text>
+ <text x="255" y="86" text-anchor="middle" font-size="9" fill="var(--muted)">Stats + activity</text>
+ <text x="255" y="98" text-anchor="middle" font-size="9" fill="var(--muted)">All 4 roles</text>
+
+ <rect x="335" y="52" width="140" height="64" rx="6" fill="var(--card)" stroke="var(--border)"/>
+ <text x="405" y="72" text-anchor="middle" font-size="10" font-weight="600">Companies</text>
+ <text x="405" y="86" text-anchor="middle" font-size="9" fill="var(--muted)">CRUD orgs</text>
+ <text x="405" y="98" text-anchor="middle" font-size="9" fill="var(--muted)">super_admin only</text>
+
+ <rect x="485" y="52" width="140" height="64" rx="6" fill="var(--card)" stroke="var(--border)"/>
+ <text x="555" y="72" text-anchor="middle" font-size="10" font-weight="600">Teams</text>
+ <text x="555" y="86" text-anchor="middle" font-size="9" fill="var(--muted)">Team CRUD</text>
+ <text x="555" y="98" text-anchor="middle" font-size="9" fill="var(--muted)">company scoped</text>
+
+ <rect x="635" y="52" width="140" height="64" rx="6" fill="var(--card)" stroke="var(--border)"/>
+ <text x="705" y="72" text-anchor="middle" font-size="10" font-weight="600">Employees</text>
+ <text x="705" y="86" text-anchor="middle" font-size="9" fill="var(--muted)">CSV import</text>
+ <text x="705" y="98" text-anchor="middle" font-size="9" fill="var(--muted)">Wallet tracking</text>
+
+ <rect x="785" y="52" width="140" height="64" rx="6" fill="var(--card)" stroke="var(--accent)" stroke-width="2"/>
+ <text x="855" y="72" text-anchor="middle" font-size="10" font-weight="600" fill="var(--accent)">Allocations</text>
+ <text x="855" y="86" text-anchor="middle" font-size="9" fill="var(--muted)">Credit buckets</text>
+ <text x="855" y="98" text-anchor="middle" font-size="9" fill="var(--muted)">claim / yield toggle</text>
+
+ <rect x="935" y="52" width="240" height="64" rx="6" fill="var(--card)" stroke="var(--accent2)" stroke-width="2"/>
+ <text x="1055" y="72" text-anchor="middle" font-size="10" font-weight="600" fill="var(--accent2)">Claims (x402)</text>
+ <text x="1055" y="86" text-anchor="middle" font-size="9" fill="var(--muted)">x402 flow + wallet sign</text>
+ <text x="1055" y="98" text-anchor="middle" font-size="9" fill="var(--muted)">Circle + ALGO faucet</text>
+
+ <!-- Row label -->
+ <text x="40" y="140" font-size="10" fill="var(--muted)">STORES (Zustand)</text>
+ <line x1="20" y1="146" x2="1160" y2="146" stroke="var(--border)" stroke-width="1"/>
+
+ <!-- Stores -->
+ <rect x="35" y="152" width="260" height="36" rx="5" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1"/>
+ <text x="165" y="170" text-anchor="middle" font-size="10" font-weight="600">authStore</text>
+ <text x="165" y="182" text-anchor="middle" font-size="9" fill="var(--muted)">session, user, role, company_id</text>
+
+ <rect x="305" y="152" width="260" height="36" rx="5" fill="#dbeafe" stroke="#93c5fd" stroke-width="1"/>
+ <text x="435" y="170" text-anchor="middle" font-size="10" font-weight="600">allocationStore</text>
+ <text x="435" y="182" text-anchor="middle" font-size="9" fill="var(--muted)">allocations[], claimCredits(), balance</text>
+
+ <rect x="575" y="152" width="260" height="36" rx="5" fill="#fef3c7" stroke="#fcd34d" stroke-width="1"/>
+ <text x="705" y="170" text-anchor="middle" font-size="10" font-weight="600">paymentStore</text>
+ <text x="705" y="182" text-anchor="middle" font-size="9" fill="var(--muted)">paymentRecords[], pendingPayments[]</text>
+
+ <rect x="845" y="152" width="330" height="36" rx="5" fill="#d1fae5" stroke="#6ee7b7" stroke-width="1"/>
+ <text x="1010" y="170" text-anchor="middle" font-size="10" font-weight="600">yieldStore</text>
+ <text x="1010" y="182" text-anchor="middle" font-size="9" fill="var(--muted)">yieldAccounts[], distributeYield(), accrue()</text>
+
+ <!-- Row label -->
+ <text x="40" y="212" font-size="10" fill="var(--muted)">SERVICES</text>
+ <line x1="20" y1="218" x2="1160" y2="218" stroke="var(--border)" stroke-width="1"/>
+
+ <!-- Services -->
+ <rect x="35" y="224" width="160" height="36" rx="5" fill="var(--card)" stroke="var(--border)"/>
+ <text x="115" y="242" text-anchor="middle" font-size="10" font-weight="600">supabase.ts</text>
+ <text x="115" y="254" text-anchor="middle" font-size="9" fill="var(--muted)">DB client, realtime</text>
+
+ <rect x="205" y="224" width="160" height="36" rx="5" fill="var(--card)" stroke="var(--border)"/>
+ <text x="285" y="242" text-anchor="middle" font-size="10" font-weight="600">x402.ts</text>
+ <text x="285" y="254" text-anchor="middle" font-size="9" fill="var(--muted)">X402Service, singleton</text>
+
+ <rect x="375" y="224" width="200" height="36" rx="5" fill="var(--card)" stroke="var(--border)"/>
+ <text x="475" y="242" text-anchor="middle" font-size="10" font-weight="600">algorandPayment.ts</text>
+ <text x="475" y="254" text-anchor="middle" font-size="9" fill="var(--muted)">Tx construction, signing payload</text>
+
+ <rect x="585" y="224" width="170" height="36" rx="5" fill="var(--card)" stroke="var(--border)"/>
+ <text x="670" y="242" text-anchor="middle" font-size="10" font-weight="600">algorand.ts</text>
+ <text x="670" y="254" text-anchor="middle" font-size="9" fill="var(--muted)">Network config, client factory</text>
+
+ <rect x="765" y="224" width="200" height="36" rx="5" fill="var(--card)" stroke="var(--border)"/>
+ <text x="865" y="242" text-anchor="middle" font-size="10" font-weight="600">algorandBalance.ts</text>
+ <text x="865" y="254" text-anchor="middle" font-size="9" fill="var(--muted)">ALGO + USDC balance queries</text>
+
+ <rect x="975" y="224" width="200" height="36" rx="5" fill="var(--card)" stroke="var(--border)"/>
+ <text x="1075" y="242" text-anchor="middle" font-size="10" font-weight="600">circleFaucet.ts</text>
+ <text x="1075" y="254" text-anchor="middle" font-size="9" fill="var(--muted)">USDC + ALGO testnet funding</text>
+
+ <!-- Row label -->
+ <text x="40" y="284" font-size="10" fill="var(--muted)">WALLET + TRANSPORT</text>
+ <line x1="20" y1="290" x2="1160" y2="290" stroke="var(--border)" stroke-width="1"/>
+
+ <!-- Wallet -->
+ <rect x="35" y="296" width="220" height="40" rx="5" fill="#fce7f3" stroke="#f9a8d4" stroke-width="1"/>
+ <text x="145" y="314" text-anchor="middle" font-size="10" font-weight="600">Lute Wallet (browser)</text>
+ <text x="145" y="326" text-anchor="middle" font-size="9" fill="var(--muted)">Key management, signing, submit</text>
+
+ <rect x="275" y="296" width="200" height="40" rx="6" fill="var(--accent)" stroke="var(--accent)" stroke-width="1.5"/>
+ <text x="375" y="318" text-anchor="middle" font-size="11" font-weight="700" fill="#ffffff">use-wallet-react</text>
+ <text x="375" y="330" text-anchor="middle" font-size="9" fill="rgba(255,255,255,0.8)">Wallet adapter hook</text>
+
+ <rect x="495" y="296" width="200" height="40" rx="5" fill="#fce7f3" stroke="#f9a8d4" stroke-width="1"/>
+ <text x="595" y="314" text-anchor="middle" font-size="10" font-weight="600">KMD (Dev)</text>
+ <text x="595" y="326" text-anchor="middle" font-size="9" fill="var(--muted)">LocalNet key management</text>
+
+ <rect x="715" y="296" width="220" height="40" rx="5" fill="#fce7f3" stroke="#f9a8d4" stroke-width="1"/>
+ <text x="825" y="314" text-anchor="middle" font-size="10" font-weight="600">WalletConnect</text>
+ <text x="825" y="326" text-anchor="middle" font-size="9" fill="var(--muted)">Mobile wallet bridge</text>
+
+ <!-- Vertical connections (simplified: pages→stores→services→wallet) -->
+ <line x1="105" y1="116" x2="165" y2="152" stroke="currentColor" opacity="0.25" stroke-width="1" marker-end="url(#arrow2)"/>
+ <line x1="255" y1="116" x2="435" y2="152" stroke="currentColor" opacity="0.25" stroke-width="1" marker-end="url(#arrow2)"/>
+ <line x1="855" y1="116" x2="435" y2="152" stroke="currentColor" opacity="0.25" stroke-width="1" marker-end="url(#arrow2)"/>
+ <line x1="1055" y1="116" x2="435" y2="152" stroke="currentColor" opacity="0.25" stroke-width="1" marker-end="url(#arrow2)"/>
+ <line x1="855" y1="116" x2="1010" y2="152" stroke="currentColor" opacity="0.25" stroke-width="1" marker-end="url(#arrow2)"/>
+ <line x1="1055" y1="116" x2="1010" y2="152" stroke="currentColor" opacity="0.25" stroke-width="1" marker-end="url(#arrow2)"/>
+ </svg>
+ </div>
+
+ <!-- ═══════════════════════════════════════════════════════════════ -->
+ <!-- LAYER 3: BACKEND -->
+ <!-- ═══════════════════════════════════════════════════════════════ -->
+ <div class="diagram">
+ <h2>Layer 3 — Backend API (Express.js)</h2>
+ <svg viewBox="0 0 1200 280" role="img" aria-label="Backend API layer: routes, middleware, services">
+ <defs>
+ <marker id="arrow3" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+ <polygon points="0 0, 8 3, 0 6" fill="currentColor" opacity="0.4"/>
+ </marker>
+ </defs>
+
+ <!-- Routes -->
+ <rect x="20" y="20" width="1140" height="60" rx="8" fill="var(--card-alt)" stroke="var(--border)"/>
+ <text x="40" y="38" font-size="11" font-weight="600" fill="var(--tag-fg)">ROUTES</text>
+ <rect x="40" y="46" width="120" height="24" rx="4" fill="var(--card)" stroke="var(--border)"/><text x="100" y="61" text-anchor="middle" font-size="9">/companies</text>
+ <rect x="170" y="46" width="120" height="24" rx="4" fill="var(--card)" stroke="var(--border)"/><text x="230" y="61" text-anchor="middle" font-size="9">/teams</text>
+ <rect x="300" y="46" width="120" height="24" rx="4" fill="var(--card)" stroke="var(--border)"/><text x="360" y="61" text-anchor="middle" font-size="9">/employees</text>
+ <rect x="430" y="46" width="120" height="24" rx="4" fill="var(--card)" stroke="var(--border)"/><text x="490" y="61" text-anchor="middle" font-size="9">/allocations</text>
+ <rect x="560" y="46" width="120" height="24" rx="4" fill="var(--card)" stroke="var(--border)"/><text x="620" y="61" text-anchor="middle" font-size="9">/transactions</text>
+ <rect x="690" y="46" width="160" height="24" rx="4" fill="var(--accent)" stroke="var(--accent)"/><text x="770" y="61" text-anchor="middle" font-size="9" fill="#fff" font-weight="600">/x402/require</text>
+ <rect x="860" y="46" width="160" height="24" rx="4" fill="var(--accent)" stroke="var(--accent)"/><text x="940" y="61" text-anchor="middle" font-size="9" fill="#fff" font-weight="600">/x402/settle</text>
+ <rect x="1030" y="46" width="100" height="24" rx="4" fill="var(--card)" stroke="var(--border)"/><text x="1080" y="61" text-anchor="middle" font-size="9">/apps</text>
+
+ <!-- Middleware -->
+ <rect x="20" y="100" width="1140" height="50" rx="8" fill="var(--card-alt)" stroke="var(--border)"/>
+ <text x="40" y="118" font-size="11" font-weight="600" fill="var(--tag-fg)">MIDDLEWARE</text>
+ <rect x="40" y="126" width="200" height="14" rx="3" fill="var(--card)" stroke="var(--border)"/><text x="140" y="137" text-anchor="middle" font-size="9">auth.ts (Supabase JWT → user)</text>
+ <rect x="260" y="126" width="220" height="14" rx="3" fill="var(--card)" stroke="var(--border)"/><text x="370" y="137" text-anchor="middle" font-size="9">companyScope.ts (enforce company_id)</text>
+ <rect x="500" y="126" width="200" height="14" rx="3" fill="var(--card)" stroke="var(--border)"/><text x="600" y="137" text-anchor="middle" font-size="9">x402Auth.ts (402 + settle logic)</text>
+
+ <!-- Services -->
+ <rect x="20" y="170" width="1140" height="50" rx="8" fill="var(--card-alt)" stroke="var(--border)"/>
+ <text x="40" y="188" font-size="11" font-weight="600" fill="var(--tag-fg)">SERVICES</text>
+ <rect x="40" y="196" width="180" height="14" rx="3" fill="var(--card)" stroke="var(--border)"/><text x="130" y="207" text-anchor="middle" font-size="9">x402Service.ts (402, settle verify)</text>
+ <rect x="240" y="196" width="200" height="14" rx="3" fill="var(--card)" stroke="var(--border)"/><text x="340" y="207" text-anchor="middle" font-size="9">allocationService.ts (business logic)</text>
+ <rect x="460" y="196" width="180" height="14" rx="3" fill="var(--card)" stroke="var(--border)"/><text x="550" y="207" text-anchor="middle" font-size="9">yieldService.ts (accrue, distribute)</text>
+ <rect x="660" y="196" width="160" height="14" rx="3" fill="var(--card)" stroke="var(--border)"/><text x="740" y="207" text-anchor="middle" font-size="9">supabase admin client</text>
+
+ <!-- Down arrows -->
+ <line x1="100" y1="80" x2="100" y2="100" stroke="currentColor" opacity="0.3" stroke-width="1" marker-end="url(#arrow3)"/>
+ <line x1="770" y1="80" x2="770" y2="100" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#arrow3)"/>
+ <line x1="940" y1="80" x2="940" y2="100" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#arrow3)"/>
+ <line x1="130" y1="150" x2="130" y2="170" stroke="currentColor" opacity="0.3" stroke-width="1" marker-end="url(#arrow3)"/>
+ <line x1="370" y1="150" x2="370" y2="170" stroke="currentColor" opacity="0.3" stroke-width="1" marker-end="url(#arrow3)"/>
+ <line x1="600" y1="150" x2="600" y2="170" stroke="currentColor" opacity="0.3" stroke-width="1" marker-end="url(#arrow3)"/>
+ <line x1="130" y1="220" x2="130" y2="240" stroke="currentColor" opacity="0.3" stroke-width="1" marker-end="url(#arrow3)"/>
+ <line x1="340" y1="220" x2="340" y2="240" stroke="currentColor" opacity="0.3" stroke-width="1" marker-end="url(#arrow3)"/>
+ <line x1="550" y1="220" x2="550" y2="240" stroke="currentColor" opacity="0.3" stroke-width="1" marker-end="url(#arrow3)"/>
+
+ <!-- DB -->
+ <rect x="480" y="240" width="240" height="28" rx="6" fill="#dbeafe" stroke="#93c5fd" stroke-width="1.5"/>
+ <text x="600" y="258" text-anchor="middle" font-size="10" font-weight="600">Supabase (PostgreSQL + RLS)</text>
+
+ <line x1="340" y1="250" x2="480" y2="254" stroke="currentColor" opacity="0.3" stroke-width="1" marker-end="url(#arrow3)"/>
+ <line x1="550" y1="250" x2="720" y2="254" stroke="currentColor" opacity="0.3" stroke-width="1" marker-end="url(#arrow3)"/>
+ </svg>
+ </div>
+
+ <!-- ═══════════════════════════════════════════════════════════════ -->
+ <!-- LAYER 4: BLOCKCHAIN -->
+ <!-- ═══════════════════════════════════════════════════════════════ -->
+ <div class="diagram">
+ <h2>Layer 4 — Algorand Blockchain</h2>
+ <svg viewBox="0 0 1200 380" role="img" aria-label="Algorand layer: wallets, smart contract, USDC asset, Circle faucet">
+ <defs>
+ <marker id="arrow4" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+ <polygon points="0 0, 8 3, 0 6" fill="currentColor" opacity="0.35"/>
+ </marker>
+ <marker id="arrow-green" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+ <polygon points="0 0, 8 3, 0 6" fill="var(--green)" opacity="0.7"/>
+ </marker>
+ <marker id="arrow-orange" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+ <polygon points="0 0, 8 3, 0 6" fill="var(--orange)" opacity="0.7"/>
+ </marker>
+ </defs>
+
+ <!-- Wallets row -->
+ <rect x="20" y="10" width="360" height="50" rx="6" fill="var(--card-alt)" stroke="var(--border)"/>
+ <text x="200" y="28" text-anchor="middle" font-size="10" font-weight="600">Employee Wallets</text>
+ <text x="80" y="44" text-anchor="middle" font-size="9" fill="var(--muted)">Lute (browser)</text>
+ <text x="200" y="44" text-anchor="middle" font-size="9" fill="var(--muted)">KMD (LocalNet)</text>
+ <text x="320" y="44" text-anchor="middle" font-size="9" fill="var(--muted)">WalletConnect</text>
+
+ <!-- Company wallet -->
+ <rect x="820" y="10" width="220" height="50" rx="6" fill="#dbeafe" stroke="#93c5fd" stroke-width="1.5"/>
+ <text x="930" y="28" text-anchor="middle" font-size="10" font-weight="600">Company Wallet</text>
+ <text x="930" y="44" text-anchor="middle" font-size="9" fill="var(--muted)">x402 payee address</text>
+
+ <!-- x402 payment arrow (employee → company) -->
+ <line x1="380" y1="35" x2="820" y2="35" stroke="var(--accent)" stroke-width="2" marker-end="url(#arrow-green)"/>
+ <text x="600" y="28" text-anchor="middle" font-size="9" font-weight="600" fill="var(--accent)">x402 USDC transfer</text>
+ <text x="600" y="42" text-anchor="middle" font-size="9" fill="var(--muted)">ASA 31566704 · micro-USDC</text>
+
+ <!-- Faucet row -->
+ <rect x="20" y="80" width="360" height="50" rx="6" fill="#fef3c7" stroke="#fcd34d" stroke-width="1"/>
+ <text x="200" y="98" text-anchor="middle" font-size="10" font-weight="600">Circle Faucet (Testnet)</text>
+ <text x="80" y="114" text-anchor="middle" font-size="9" fill="var(--muted)">USDC faucet</text>
+ <text x="200" y="114" text-anchor="middle" font-size="9" fill="var(--muted)">ALGO public faucets</text>
+ <text x="320" y="114" text-anchor="middle" font-size="9" fill="var(--muted)">fundWalletWithTestUSDC()</text>
+
+ <!-- Faucet → wallets -->
+ <line x1="200" y1="60" x2="200" y2="80" stroke="var(--orange)" stroke-width="1.5" marker-end="url(#arrow-orange)"/>
+ <line x1="200" y1="130" x2="200" y2="155" stroke="currentColor" opacity="0.2" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow4)"/>
+
+ <!-- Algod/Indexer -->
+ <rect x="440" y="155" width="320" height="50" rx="6" fill="var(--card)" stroke="var(--border)"/>
+ <text x="600" y="173" text-anchor="middle" font-size="10" font-weight="600">Algod RPC + Indexer</text>
+ <text x="600" y="189" text-anchor="middle" font-size="9" fill="var(--muted)">Submit transactions · Query balances & assets</text>
+
+ <!-- Smart Contract -->
+ <rect x="440" y="225" width="320" height="90" rx="8" fill="var(--card-alt)" stroke="var(--accent2)" stroke-width="2"/>
+ <text x="600" y="245" text-anchor="middle" font-size="11" font-weight="700" fill="var(--accent2)">CreditFlowYieldVault</text>
+ <text x="600" y="261" text-anchor="middle" font-size="9" fill="var(--muted)">Algorand Smart Contract (TEAL)</text>
+ <!-- Methods -->
+ <rect x="455" y="268" width="130" height="18" rx="3" fill="var(--card)" stroke="var(--border)"/><text x="520" y="281" text-anchor="middle" font-size="8">deposit()</text>
+ <rect x="595" y="268" width="130" height="18" rx="3" fill="var(--card)" stroke="var(--border)"/><text x="660" y="281" text-anchor="middle" font-size="8">accrue_yield()</text>
+ <rect x="455" y="290" width="130" height="18" rx="3" fill="var(--card)" stroke="var(--border)"/><text x="520" y="303" text-anchor="middle" font-size="8">distribute()</text>
+ <rect x="595" y="290" width="130" height="18" rx="3" fill="var(--card)" stroke="var(--border)"/><text x="660" y="303" text-anchor="middle" font-size="8">reclaim()</text>
+ <text x="600" y="322" text-anchor="middle" font-size="9" fill="var(--muted)">ARC-56 ABI · Approval + Clear TEAL</text>
+
+ <!-- Arrows: wallets ↔ algod -->
+ <line x1="200" y1="35" x2="440" y2="180" stroke="currentColor" opacity="0.25" stroke-width="1" marker-end="url(#arrow4)"/>
+ <line x1="930" y1="60" x2="600" y2="155" stroke="currentColor" opacity="0.25" stroke-width="1" marker-end="url(#arrow4)"/>
+
+ <!-- Arrows: algod ↔ contract -->
+ <line x1="600" y1="205" x2="600" y2="225" stroke="var(--accent2)" stroke-width="1.5" marker-end="url(#arrow-green)"/>
+
+ <!-- Yield flows -->
+ <line x1="600" y1="315" x2="600" y2="340" stroke="currentColor" opacity="0.2" stroke-width="1" stroke-dasharray="4,3"/>
+ <text x="620" y="330" font-size="8" fill="var(--muted)">yield splits to company + employee</text>
+
+ <!-- USDC Asset box -->
+ <rect x="440" y="340" width="320" height="32" rx="5" fill="#dbeafe" stroke="#93c5fd" stroke-width="1"/>
+ <text x="600" y="360" text-anchor="middle" font-size="9" font-weight="600">USDC ASA (Asset ID: 31566704) — x402 payment token</text>
+ <line x1="600" y1="315" x2="600" y2="340" stroke="var(--accent)" stroke-width="1" marker-end="url(#arrow4)"/>
+ </svg>
+ </div>
+
+ <!-- ═══════════════════════════════════════════════════════════════ -->
+ <!-- FLOW DIAGRAM: x402 Payment Lifecycle -->
+ <!-- ═══════════════════════════════════════════════════════════════ -->
+ <div class="diagram">
+ <h2>x402 Payment Lifecycle — Step by Step</h2>
+ <svg viewBox="0 0 1200 420" role="img" aria-label="x402 payment flow from request to settlement across client, backend, blockchain">
+ <defs>
+ <marker id="flow-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+ <polygon points="0 0, 8 3, 0 6" fill="var(--accent)" opacity="0.6"/>
+ </marker>
+ </defs>
+
+ <!-- Step labels and boxes -->
+ <rect x="20" y="20" width="210" height="60" rx="6" fill="var(--card)" stroke="var(--border)" stroke-width="1.5"/>
+ <text x="125" y="38" text-anchor="middle" font-size="10" font-weight="700">① Client</text>
+ <text x="125" y="54" text-anchor="middle" font-size="9" fill="var(--muted)">GET /api/resource</text>
+ <text x="125" y="66" text-anchor="middle" font-size="9" fill="var(--muted)">needs x402 payment</text>
+
+ <text x="235" y="55" font-size="14" fill="var(--accent)">→</text>
+
+ <rect x="260" y="20" width="210" height="60" rx="6" fill="var(--card)" stroke="var(--orange)" stroke-width="2"/>
+ <text x="365" y="38" text-anchor="middle" font-size="10" font-weight="700">② Backend</text>
+ <text x="365" y="54" text-anchor="middle" font-size="9" fill="var(--muted)">402 + X-Payment-Required</text>
+ <text x="365" y="66" text-anchor="middle" font-size="9" fill="var(--muted)">scheme: exact, network: algorand</text>
+
+ <text x="475" y="55" font-size="14" fill="var(--accent)">→</text>
+
+ <rect x="500" y="20" width="210" height="60" rx="6" fill="var(--card)" stroke="var(--border)" stroke-width="1.5"/>
+ <text x="605" y="38" text-anchor="middle" font-size="10" font-weight="700">③ Frontend</text>
+ <text x="605" y="54" text-anchor="middle" font-size="9" fill="var(--muted)">Build ASA transfer txn</text>
+ <text x="605" y="66" text-anchor="middle" font-size="9" fill="var(--muted)">USDC 31566704 · micro-USDC</text>
+
+ <text x="715" y="55" font-size="14" fill="var(--accent)">→</text>
+
+ <rect x="740" y="20" width="210" height="60" rx="6" fill="#fce7f3" stroke="#f9a8d4" stroke-width="1.5"/>
+ <text x="845" y="38" text-anchor="middle" font-size="10" font-weight="700">④ Wallet</text>
+ <text x="845" y="54" text-anchor="middle" font-size="9" fill="var(--muted)">Lute prompts user</text>
+ <text x="845" y="66" text-anchor="middle" font-size="9" fill="var(--muted)">Ed25519 sign auth bytes</text>
+
+ <text x="955" y="55" font-size="14" fill="var(--accent)">→</text>
+
+ <rect x="980" y="20" width="200" height="60" rx="6" fill="var(--card-alt)" stroke="var(--green)" stroke-width="2"/>
+ <text x="1080" y="38" text-anchor="middle" font-size="10" font-weight="700" fill="var(--green)">⑤ Algorand</text>
+ <text x="1080" y="54" text-anchor="middle" font-size="9" fill="var(--muted)">Submit signed txn</text>
+ <text x="1080" y="66" text-anchor="middle" font-size="9" fill="var(--muted)">USDC transferred ✓</text>
+
+ <!-- Row 2 -->
+ <text x="1080" y="110" text-anchor="middle" font-size="9" fill="var(--muted)">tx hash returned</text>
+ <line x1="845" y1="80" x2="845" y2="105" stroke="currentColor" opacity="0.3" stroke-width="1" marker-end="url(#flow-arrow)"/>
+
+ <!-- Row 2 continues -->
+ <rect x="740" y="110" width="210" height="60" rx="6" fill="var(--card)" stroke="var(--border)" stroke-width="1.5"/>
+ <text x="845" y="128" text-anchor="middle" font-size="10" font-weight="700">⑥ Frontend</text>
+ <text x="845" y="144" text-anchor="middle" font-size="9" fill="var(--muted)">POST /api/x402/settle</text>
+ <text x="845" y="156" text-anchor="middle" font-size="9" fill="var(--muted)">{ txHash }</text>
+
+ <text x="955" y="145" font-size="14" fill="var(--accent)">→</text>
+
+ <rect x="980" y="110" width="200" height="60" rx="6" fill="var(--card)" stroke="var(--accent)" stroke-width="2"/>
+ <text x="1080" y="128" text-anchor="middle" font-size="10" font-weight="700">⑦ Backend</text>
+ <text x="1080" y="144" text-anchor="middle" font-size="9" fill="var(--muted)">Verify on-chain via Indexer</text>
+ <text x="1080" y="156" text-anchor="middle" font-size="9" fill="var(--muted)">Confirm: amount matches</text>
+
+ <!-- Row 3 -->
+ <text x="1080" y="200" text-anchor="middle" font-size="9" fill="var(--muted)">update DB</text>
+ <line x1="1080" y1="170" x2="600" y2="200" stroke="currentColor" opacity="0.3" stroke-width="1" marker-end="url(#flow-arrow)"/>
+
+ <rect x="500" y="200" width="210" height="70" rx="6" fill="var(--card)" stroke="var(--accent)" stroke-width="1.5"/>
+ <text x="605" y="218" text-anchor="middle" font-size="10" font-weight="700">⑧ Database</text>
+ <text x="605" y="234" text-anchor="middle" font-size="9" fill="var(--muted)">UPDATE allocations</text>
+ <text x="605" y="246" text-anchor="middle" font-size="9" fill="var(--muted)">INSERT transactions (type: claim)</text>
+ <text x="605" y="258" text-anchor="middle" font-size="9" fill="var(--muted)">INSERT payment_records (confirmed)</text>
+
+ <text x="485" y="245" font-size="14" fill="var(--accent)">←</text>
+ <text x="320" y="245" font-size="10" fill="var(--accent)" font-weight="600">200 OK + resource</text>
+ <line x1="500" y1="235" x2="470" y2="235" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#flow-arrow)"/>
+
+ <!-- Back to client -->
+ <rect x="260" y="200" width="210" height="70" rx="6" fill="var(--card)" stroke="var(--border)" stroke-width="1.5"/>
+ <text x="365" y="218" text-anchor="middle" font-size="10" font-weight="700">⑨ Client</text>
+ <text x="365" y="234" text-anchor="middle" font-size="9" fill="var(--muted)">Receives protected data</text>
+ <text x="365" y="246" text-anchor="middle" font-size="9" fill="var(--muted)">UI shows: payment confirmed</text>
+
+ <text x="365" y="290" text-anchor="middle" font-size="9" fill="var(--muted)">← step 8 result</text>
+ <line x1="365" y1="270" x2="365" y2="280" stroke="currentColor" opacity="0.3" stroke-width="1" marker-end="url(#flow-arrow)"/>
+
+ <!-- Row 4: User story boxes -->
+ <rect x="20" y="340" width="1140" height="60" rx="8" fill="var(--card-alt)" stroke="var(--border)"/>
+ <text x="600" y="358" text-anchor="middle" font-size="10" font-weight="600">What the user experiences</text>
+ <text x="80" y="374" text-anchor="middle" font-size="9">1. "Pay 2.50 USDC" prompt appears</text>
+ <text x="280" y="374" text-anchor="middle" font-size="9">2. Wallet opens, user approves</text>
+ <text x="480" y="374" text-anchor="middle" font-size="9">3. Algorand confirms in ~4s</text>
+ <text x="680" y="374" text-anchor="middle" font-size="9">4. App unlocks the service</text>
+ <text x="880" y="374" text-anchor="middle" font-size="9">5. Ledger: credits claimed ✓</text>
+ <text x="1080" y="374" text-anchor="middle" font-size="9">6. Record: payment confirmed ✓</text>
+ </svg>
+ <p class="note">This flow is implemented across <code>x402.ts</code> (service), <code>algorandPayment.ts</code> (tx construction), and the <code>/x402/require</code> + <code>/x402/settle</code> backend routes.</p>
+ </div>
+
+ <!-- ═══════════════════════════════════════════════════════════════ -->
+ <!-- FLOW DIAGRAM: Yield Lifecycle -->
+ <!-- ═══════════════════════════════════════════════════════════════ -->
+ <div class="diagram">
+ <h2>Yield Lifecycle — Unclaimed Credits → Yield Vault → Distribution</h2>
+ <svg viewBox="0 0 1200 340" role="img" aria-label="Yield lifecycle flow from allocation through yield vault to distribution">
+ <defs>
+ <marker id="yield-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+ <polygon points="0 0, 8 3, 0 6" fill="var(--green)" opacity="0.6"/>
+ </marker>
+ </defs>
+
+ <!-- Trigger -->
+ <rect x="20" y="20" width="220" height="50" rx="6" fill="var(--card)" stroke="var(--border)"/>
+ <text x="130" y="38" text-anchor="middle" font-size="10" font-weight="700">Allocation (active)</text>
+ <text x="130" y="52" text-anchor="middle" font-size="9" fill="var(--muted)">unclaimed_credits → yield_eligible</text>
+ <text x="130" y="64" text-anchor="middle" font-size="9" fill="var(--muted)">yield_enabled = true</text>
+
+ <text x="245" y="50" font-size="14" fill="var(--green)">→</text>
+
+ <!-- Yield calculation -->
+ <rect x="270" y="20" width="220" height="50" rx="6" fill="#d1fae5" stroke="#6ee7b7" stroke-width="1.5"/>
+ <text x="380" y="38" text-anchor="middle" font-size="10" font-weight="700">yieldService.accrue()</text>
+ <text x="380" y="52" text-anchor="middle" font-size="9" fill="var(--muted)">APY × elapsed time</text>
+ <text x="380" y="64" text-anchor="middle" font-size="9" fill="var(--muted)">yield_generated updated</text>
+
+ <text x="495" y="50" font-size="14" fill="var(--green)">→</text>
+
+ <!-- Yield account -->
+ <rect x="520" y="20" width="220" height="50" rx="6" fill="var(--card)" stroke="var(--border)"/>
+ <text x="630" y="38" text-anchor="middle" font-size="10" font-weight="700">yield_accounts (DB)</text>
+ <text x="630" y="52" text-anchor="middle" font-size="9" fill="var(--muted)">principal, yield_generated</text>
+ <text x="630" y="64" text-anchor="middle" font-size="9" fill="var(--muted)">company_share, employee_share</text>
+
+ <text x="745" y="50" font-size="14" fill="var(--green)">→</text>
+
+ <!-- Smart contract -->
+ <rect x="770" y="20" width="220" height="50" rx="6" fill="var(--card-alt)" stroke="var(--accent2)" stroke-width="1.5"/>
+ <text x="880" y="38" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent2)">deposit() → vault</text>
+ <text x="880" y="52" text-anchor="middle" font-size="9" fill="var(--muted)">USDC ASA transfer to app</text>
+ <text x="880" y="64" text-anchor="middle" font-size="9" fill="var(--muted)">local state updated</text>
+
+ <!-- Accrue on-chain -->
+ <text x="770" y="90" font-size="10" fill="var(--green)" font-weight="600">accrue_yield()</text>
+ <line x1="880" y1="70" x2="880" y2="85" stroke="var(--green)" stroke-width="1" marker-end="url(#yield-arrow)"/>
+
+ <!-- Distribute -->
+ <rect x="770" y="90" width="220" height="50" rx="6" fill="var(--card)" stroke="var(--border)"/>
+ <text x="880" y="108" text-anchor="middle" font-size="10" font-weight="700">distribute()</text>
+ <text x="880" y="122" text-anchor="middle" font-size="9" fill="var(--muted)">Split yield: company + employee</text>
+ <text x="880" y="134" text-anchor="middle" font-size="9" fill="var(--muted)">Atomic USDC transfers</text>
+
+ <!-- Two outputs -->
+ <line x1="770" y1="115" x2="440" y2="160" stroke="var(--green)" stroke-width="1.5" marker-end="url(#yield-arrow)"/>
+ <line x1="770" y1="115" x2="600" y2="160" stroke="var(--green)" stroke-width="1.5" marker-end="url(#yield-arrow)"/>
+
+ <!-- Company receives -->
+ <rect x="240" y="155" width="200" height="50" rx="6" fill="#dbeafe" stroke="#93c5fd" stroke-width="1.5"/>
+ <text x="340" y="173" text-anchor="middle" font-size="10" font-weight="700">Company Wallet</text>
+ <text x="340" y="187" text-anchor="middle" font-size="9" fill="var(--muted)">Receives company_share</text>
+ <text x="340" y="199" text-anchor="middle" font-size="9" fill="var(--muted)">(configurable split %)</text>
+
+ <!-- Employee receives -->
+ <rect x="660" y="155" width="200" height="50" rx="6" fill="#fef3c7" stroke="#fcd34d" stroke-width="1.5"/>
+ <text x="760" y="173" text-anchor="middle" font-size="10" font-weight="700">Employee Wallet</text>
+ <text x="760" y="187" text-anchor="middle" font-size="9" fill="var(--muted)">Receives employee_share</text>
+ <text x="760" y="199" text-anchor="middle" font-size="9" fill="var(--muted)">(incentive alignment)</text>
+
+ <!-- Reclaim -->
+ <rect x="970" y="90" width="210" height="50" rx="6" fill="var(--card)" stroke="var(--border)"/>
+ <text x="1075" y="108" text-anchor="middle" font-size="10" font-weight="700">reclaim()</text>
+ <text x="1075" y="122" text-anchor="middle" font-size="9" fill="var(--muted)">Return principal on close</text>
+ <text x="1075" y="134" text-anchor="middle" font-size="9" fill="var(--muted)">allocation terminated</text>
+
+ <line x1="880" y1="140" x2="880" y2="155" stroke="currentColor" opacity="0.3" stroke-width="1" marker-end="url(#yield-arrow)"/>
+ <line x1="1075" y1="140" x2="1075" y2="155" stroke="currentColor" opacity="0.3" stroke-width="1" marker-end="url(#yield-arrow)"/>
+
+ <!-- Audit trail -->
+ <rect x="20" y="240" width="1140" height="80" rx="8" fill="var(--card-alt)" stroke="var(--border)"/>
+ <text x="590" y="258" text-anchor="middle" font-size="10" font-weight="600">Immutable Audit Trail (transactions table)</text>
+ <text x="80" y="276" text-anchor="middle" font-size="9">allocate</text>
+ <text x="180" y="276" text-anchor="middle" font-size="9">claim</text>
+ <text x="280" y="276" text-anchor="middle" font-size="9">yield_accrue</text>
+ <text x="420" y="276" text-anchor="middle" font-size="9">yield_distribute</text>
+ <text x="560" y="276" text-anchor="middle" font-size="9">reclaim</text>
+ <text x="660" y="276" text-anchor="middle" font-size="9">adjust</text>
+ <text x="590" y="296" text-anchor="middle" font-size="9" fill="var(--muted)">Every credit movement is a transaction record with from_entity, to_entity, amount, type, tx_hash</text>
+ </svg>
+ </div>
+
+ <!-- ═══════════════════════════════════════════════════════════════ -->
+ <!-- DATA MODEL -->
+ <!-- ═══════════════════════════════════════════════════════════════ -->
+ <div class="diagram">
+ <h2>Data Model — Entity Relationships</h2>
+ <svg viewBox="0 0 1200 480" role="img" aria-label="Entity relationship diagram: companies, teams, employees, allocations, transactions, yield accounts, payment records">
+ <defs>
+ <marker id="er-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+ <polygon points="0 0, 8 3, 0 6" fill="currentColor" opacity="0.35"/>
+ </marker>
+ </defs>
+
+ <!-- Company -->
+ <rect x="480" y="10" width="240" height="60" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="2"/>
+ <text x="600" y="28" text-anchor="middle" font-size="11" font-weight="700">companies</text>
+ <text x="600" y="44" text-anchor="middle" font-size="9" fill="var(--muted)">id · name · slug · owner_id</text>
+ <text x="600" y="56" text-anchor="middle" font-size="9" fill="var(--muted)">wallet_address · x402_config · credit_pool</text>
+
+ <!-- Team -->
+ <rect x="120" y="110" width="200" height="55" rx="8" fill="var(--card-alt)" stroke="var(--border)" stroke-width="1.5"/>
+ <text x="220" y="128" text-anchor="middle" font-size="11" font-weight="600">teams</text>
+ <text x="220" y="144" text-anchor="middle" font-size="9" fill="var(--muted)">id · company_id FK</text>
+ <text x="220" y="156" text-anchor="middle" font-size="9" fill="var(--muted)">name · manager_id · budget_pool</text>
+
+ <!-- Employee -->
+ <rect x="880" y="110" width="200" height="55" rx="8" fill="var(--card-alt)" stroke="var(--border)" stroke-width="1.5"/>
+ <text x="980" y="128" text-anchor="middle" font-size="11" font-weight="600">employees</text>
+ <text x="980" y="144" text-anchor="middle" font-size="9" fill="var(--muted)">id · company_id FK</text>
+ <text x="980" y="156" text-anchor="middle" font-size="9" fill="var(--muted)">name · email · role · wallet_address</text>
+
+ <!-- Allocation -->
+ <rect x="320" y="200" width="240" height="70" rx="8" fill="var(--card)" stroke="var(--accent)" stroke-width="2"/>
+ <text x="440" y="218" text-anchor="middle" font-size="11" font-weight="700">allocations</text>
+ <text x="440" y="234" text-anchor="middle" font-size="9" fill="var(--muted)">id · company_id · team_id · employee_id</text>
+ <text x="440" y="246" text-anchor="middle" font-size="9" fill="var(--muted)">period_start · period_end</text>
+ <text x="440" y="258" text-anchor="middle" font-size="9" fill="var(--muted)">total_credits · claimed · unclaimed · yield_eligible</text>
+ <text x="440" y="270" text-anchor="middle" font-size="9" fill="var(--muted)">status: active | suspended | terminated</text>
+
+ <!-- Transaction -->
+ <rect x="20" y="320" width="220" height="55" rx="8" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5"/>
+ <text x="130" y="338" text-anchor="middle" font-size="11" font-weight="600">transactions</text>
+ <text x="130" y="354" text-anchor="middle" font-size="9" fill="var(--muted)">id · allocation_id · type</text>
+ <text x="130" y="366" text-anchor="middle" font-size="9" fill="var(--muted)">amount · from_entity · to_entity · tx_hash</text>
+
+ <!-- Payment Record -->
+ <rect x="280" y="320" width="220" height="55" rx="8" fill="#fce7f3" stroke="#ec4899" stroke-width="1.5"/>
+ <text x="390" y="338" text-anchor="middle" font-size="11" font-weight="600">payment_records</text>
+ <text x="390" y="354" text-anchor="middle" font-size="9" fill="var(--muted)">id · allocation_id · service_id</text>
+ <text x="390" y="366" text-anchor="middle" font-size="9" fill="var(--muted)">amount · x402_tx_hash · status</text>
+
+ <!-- Yield Account -->
+ <rect x="540" y="320" width="240" height="55" rx="8" fill="#d1fae5" stroke="#10b981" stroke-width="1.5"/>
+ <text x="660" y="338" text-anchor="middle" font-size="11" font-weight="600">yield_accounts</text>
+ <text x="660" y="354" text-anchor="middle" font-size="9" fill="var(--muted)">id · allocation_id · principal</text>
+ <text x="660" y="366" text-anchor="middle" font-size="9" fill="var(--muted)">yield_generated · company_share · employee_share</text>
+
+ <!-- Relationship lines -->
+ <!-- company → team -->
+ <line x1="540" y1="70" x2="220" y2="110" stroke="currentColor" opacity="0.3" stroke-width="1" marker-end="url(#er-arrow)"/>
+ <text x="370" y="85" text-anchor="middle" font-size="8" fill="var(--muted)">1:N</text>
+
+ <!-- company → employee -->
+ <line x1="720" y1="70" x2="980" y2="110" stroke="currentColor" opacity="0.3" stroke-width="1" marker-end="url(#er-arrow)"/>
+ <text x="860" y="85" text-anchor="middle" font-size="8" fill="var(--muted)">1:N</text>
+
+ <!-- team → employee (via team_id) -->
+ <line x1="320" y1="137" x2="880" y2="137" stroke="currentColor" opacity="0.2" stroke-width="1" stroke-dasharray="3,3"/>
+
+ <!-- company → allocation -->
+ <line x1="540" y1="70" x2="440" y2="200" stroke="currentColor" opacity="0.3" stroke-width="1" marker-end="url(#er-arrow)"/>
+ <text x="510" y="140" text-anchor="middle" font-size="8" fill="var(--muted)">1:N</text>
+
+ <!-- team → allocation -->
+ <line x1="260" y1="165" x2="360" y2="200" stroke="currentColor" opacity="0.2" stroke-width="1" stroke-dasharray="3,3"/>
+
+ <!-- employee → allocation -->
+ <line x1="940" y1="165" x2="520" y2="200" stroke="currentColor" opacity="0.2" stroke-width="1" stroke-dasharray="3,3"/>
+
+ <!-- allocation → transaction -->
+ <line x1="380" y1="270" x2="150" y2="320" stroke="currentColor" opacity="0.3" stroke-width="1" marker-end="url(#er-arrow)"/>
+ <text x="260" y="295" text-anchor="middle" font-size="8" fill="var(--muted)">1:N</text>
+
+ <!-- allocation → payment_record -->
+ <line x1="440" y1="270" x2="390" y2="320" stroke="currentColor" opacity="0.3" stroke-width="1" marker-end="url(#er-arrow)"/>
+ <text x="420" y="295" text-anchor="middle" font-size="8" fill="var(--muted)">1:N</text>
+
+ <!-- allocation → yield_account -->
+ <line x1="480" y1="270" x2="600" y2="320" stroke="currentColor" opacity="0.3" stroke-width="1" marker-end="url(#er-arrow)"/>
+ <text x="540" y="295" text-anchor="middle" font-size="8" fill="var(--muted)">1:1</text>
+
+ <!-- company → yield_account -->
+ <line x1="600" y1="70" x2="660" y2="320" stroke="currentColor" opacity="0.15" stroke-width="1" stroke-dasharray="3,3"/>
+
+ <!-- Legend -->
+ <line x1="20" y1="440" x2="50" y2="440" stroke="currentColor" opacity="0.3" stroke-width="1.5" marker-end="url(#er-arrow)"/>
+ <text x="55" y="444" font-size="9" fill="var(--muted)">FK relationship (solid)</text>
+ <line x1="220" y1="440" x2="250" y2="440" stroke="currentColor" opacity="0.2" stroke-width="1" stroke-dasharray="3,3"/>
+ <text x="255" y="444" font-size="9" fill="var(--muted)">optional FK (dashed)</text>
+ </svg>
+ </div>
+
+ <!-- ═══════════════════════════════════════════════════════════════ -->
+ <!-- SECURITY + DATA FLOW SUMMARY -->
+ <!-- ═══════════════════════════════════════════════════════════════ -->
+ <div class="diagram">
+ <h2>Security Boundaries & Data Flow Summary</h2>
+ <svg viewBox="0 0 1200 300" role="img" aria-label="Security boundaries: RLS in Supabase, JWT auth, x402 signature verification, on-chain settlement">
+ <defs>
+ <marker id="sec-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+ <polygon points="0 0, 8 3, 0 6" fill="currentColor" opacity="0.35"/>
+ </marker>
+ </defs>
+
+ <!-- Client zone -->
+ <rect x="20" y="20" width="360" height="260" rx="10" fill="var(--card-alt)" stroke="var(--accent)" stroke-width="2"/>
+ <text x="200" y="38" text-anchor="middle" font-size="11" font-weight="700" fill="var(--accent)">CLIENT ZONE</text>
+ <text x="40" y="56" font-size="9" font-weight="600">Trust boundaries:</text>
+ <text x="40" y="72" font-size="9" fill="var(--muted)">• Wallet holds private keys</text>
+ <text x="40" y="86" font-size="9" fill="var(--muted)">• Supabase Auth JWT in localStorage</text>
+ <text x="40" y="100" font-size="9" fill="var(--muted)">• x402 nonce & auth signed by wallet</text>
+ <text x="40" y="116" font-size="9" fill="var(--muted)">• All tx construction in-browser</text>
+ <text x="40" y="134" font-size="9" font-weight="600">Data flow:</text>
+ <text x="40" y="150" font-size="9" fill="var(--muted)">Browser → HTTPS → Backend API</text>
+ <text x="40" y="164" font-size="9" fill="var(--muted)">Wallet → Algorand RPC</text>
+ <text x="40" y="182" font-size="9" font-weight="600">Validated by:</text>
+ <text x="40" y="198" font-size="9" fill="var(--muted)">• Supabase Auth (JWT expiry)</text>
+ <text x="40" y="212" font-size="9" fill="var(--muted)">• Wallet signature (Ed25519)</text>
+ <text x="40" y="226" font-size="9" fill="var(--muted)">• Backend nonce check (replay prev.)</text>
+
+ <!-- Backend zone -->
+ <rect x="420" y="20" width="360" height="260" rx="10" fill="var(--card-alt)" stroke="var(--orange)" stroke-width="2"/>
+ <text x="600" y="38" text-anchor="middle" font-size="11" font-weight="700" fill="var(--orange)">BACKEND ZONE</text>
+ <text x="440" y="56" font-size="9" font-weight="600">Trust boundaries:</text>
+ <text x="440" y="72" font-size="9" fill="var(--muted)">• Verifies JWT on every request</text>
+ <text x="440" y="86" font-size="9" fill="var(--muted)">• Enforces company-scoped queries</text>
+ <text x="440" y="100" font-size="9" fill="var(--muted)">• Validates x402 settlement on-chain</text>
+ <text x="440" y="116" font-size="9" fill="var(--muted)">• Checks tx hash via Algorand Indexer</text>
+ <text x="440" y="134" font-size="9" font-weight="600">Data flow:</text>
+ <text x="440" y="150" font-size="9" fill="var(--muted)">HTTPS ←→ Supabase (Admin client)</text>
+ <text x="440" y="164" font-size="9" fill="var(--muted)">HTTPS ←→ Algorand Indexer</text>
+ <text x="440" y="182" font-size="9" font-weight="600">Validated by:</text>
+ <text x="440" y="198" font-size="9" fill="var(--muted)">• Supabase RLS policies</text>
+ <text x="440" y="212" font-size="9" fill="var(--muted)">• On-chain tx confirmation</text>
+ <text x="440" y="226" font-size="9" fill="var(--muted)">• Nonce uniqueness (DB constraint)</text>
+
+ <!-- Blockchain zone -->
+ <rect x="820" y="20" width="360" height="260" rx="10" fill="var(--card-alt)" stroke="var(--green)" stroke-width="2"/>
+ <text x="1000" y="38" text-anchor="middle" font-size="11" font-weight="700" fill="var(--green)">BLOCKCHAIN ZONE</text>
+ <text x="840" y="56" font-size="9" font-weight="600">Trust boundaries:</text>
+ <text x="840" y="72" font-size="9" fill="var(--muted)">• Algorand consensus validates all txs</text>
+ <text x="840" y="86" font-size="9" fill="var(--muted)">• Smart contract enforces yield logic</text>
+ <text x="840" y="100" font-size="9" fill="var(--muted)">• ASA transfers are atomic (group txs)</text>
+ <text x="840" y="116" font-size="9" fill="var(--muted)">• Smart contract only operates on ASA</text>
+ <text x="840" y="134" font-size="9" font-weight="600">Data flow:</text>
+ <text x="840" y="150" font-size="9" fill="var(--muted)">RPC → Algod node → consensus</text>
+ <text x="840" y="164" font-size="9" fill="var(--muted)">Indexer → indexed state</text>
+ <text x="840" y="182" font-size="9" font-weight="600">Validated by:</text>
+ <text x="840" y="198" font-size="9" fill="var(--muted)">• TEAL approval program</text>
+ <text x="840" y="212" font-size="9" fill="var(--muted)">• ARC-56 ABI constraints</text>
+ <text x="840" y="226" font-size="9" fill="var(--muted)">• ASA holdings verification</text>
+
+ <!-- Cross-zone arrows -->
+ <line x1="380" y1="150" x2="420" y2="150" stroke="currentColor" opacity="0.4" stroke-width="1.5" marker-end="url(#sec-arrow)"/>
+ <text x="395" y="142" text-anchor="middle" font-size="8" fill="var(--muted)">HTTPS</text>
+
+ <line x1="780" y1="150" x2="820" y2="150" stroke="currentColor" opacity="0.4" stroke-width="1.5" marker-end="url(#sec-arrow)"/>
+ <text x="795" y="142" text-anchor="middle" font-size="8" fill="var(--muted)">RPC</text>
+ </svg>
+ </div>
+
+ <p style="text-align:center; color: var(--muted); font-size: 0.8rem; margin-top: 1rem;">
+ CreditFlow (Chudgaye) — Architecture generated from source analysis. For implementation details, see <code>ARCHITECTURE.md</code>.
+ </p>
+</div>
+</body>
+</html>

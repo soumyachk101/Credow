@@ -1,4 +1,5 @@
-import type { Allocation, CreateAllocationInput, ClaimRequest, ClaimResponse } from '@/app/api/allocations'
+import type { Allocation, CreateAllocationInput, ClaimRequest, ClaimResponse } from '@/lib/types'
+export type { Allocation, CreateAllocationInput, ClaimRequest, ClaimResponse }
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 

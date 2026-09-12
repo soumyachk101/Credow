@@ -14,13 +14,17 @@
   "dependencies": {
     "@algorandfoundation/algokit-utils": "9.2.0",
     "@repo/contracts": "*",
+    "@supabase/supabase-js": "^2.116.0",
     "@txnlab/use-wallet-react": "^4.0.1",
     "@txnlab/use-wallet-ui-react": "^1.0.0",
+    "@x402-avm/paywall": "^2.6.1",
     "algosdk": "3.7.0",
+    "framer-motion": "^13.2.0",
     "lucide-react": "^1.45.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-router-dom": "^7.18.3"
+    "react-router-dom": "^7.18.3",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.0",

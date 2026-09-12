@@ -1,317 +1,695 @@
-# CreditFlow — System Architecture
+# CreditFlow (Chudgaye) — System Architecture & Reference
 
-## 1. OVERVIEW
+## What this is
 
-CreditFlow is a corporate API credit management platform. Companies purchase credit pools, allocate them to teams/employees, and employees consume those credits via x402 payments to access paid APIs. Unused credits earn yield through an on-chain vault.
+CreditFlow is a corporate expense-management platform that lets companies allocate digital credit to employees, lets employees claim and spend those credits through the **x402 payment protocol** on **Algorand**, and puts unclaimed credits to work in an on-chain **yield vault**.
+
+This document covers the full end-to-end system: from a manager creating an allocation to an employee's wallet signing an Algorand transaction and credits flowing into a yield strategy.
+
+---
+
+## System Architecture
+
+### High-Level Component Map
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│ CREDITFLOW ARCHITECTURE │
-├─────────────────────────────────────────────────────────────┤
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ USERS / ACTORS │
+│ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ │
+│ │ Super │ │ Company │ │ Manager │ │ Employee │ │
+│ │ Admin │ │ Owner │ │ │ │ │ │
+│ └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ │
+└───────┼─────────────┼─────────────┼─────────────┼──────────────────────────┘
+ │ │ │ │
+ ▼ ▼ ▼ ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ FRONTEND (React + Vite) │
 │ │
-│ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ │
-│ │ React SPA │───►│ Express │───►│ Supabase │ │
-│ │ (Vite) │ │ API │ │ (Postgres) │ │
-│ └──────┬───────┘ └──────┬───────┘ └──────────────┘ │
+│ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ │
+│ │ Dashboard│ │ Companies│ │ Allocat- │ │ Claims │ │
+│ │ │ │ /Teams │ │ ions │ │ (x402) │ │
+│ └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ │
+│ │ │ │ │ │
+│ ┌────┴─────────────┴─────────────┴─────────────┴──────┐ │
+│ │ Zustand State Stores │ │
+│ │ authStore │ allocationStore │ paymentStore │ yieldStore│ │
+│ └────┬─────────────────────────────────────────────────┘ │
+│ │ │
+│ ┌────┴─────────────────────────────────────────────────┐ │
+│ │ Service Layer │ │
+│ │ supabase.ts │ x402.ts │ algorandPayment.ts │ │
+│ │ algorand.ts │ algorandBalance.ts │ circleFaucet.ts│ │
+│ └────┬─────────────────────────────────────────────────┘ │
+│ │ │
+│ ┌────┴─────────────────────────────────────────────────┐ │
+│ │ Wallet Layer (use-wallet-react) │ │
+│ │ Lute Wallet Connect │ KMD │ WalletConnect │ │
+│ └──────────────────────────────────────────────────────┘ │
+└──────────────────────────┬─────────────────────────────────────────────────┘
+ │
+ ┌────────────┴────────────┐
+ │ │
+ ▼ ▼
+┌──────────────────────┐ ┌──────────────────────────────────────────┐
+│ SUPABASE (BaaS) │ │ ALGORAND BLOCKCHAIN │
 │ │ │ │
-│ │ ┌──────▼───────┐ │
-│ │ │ Algorand │ │
-│ │ │ x402 Layer │ │
-│ │ └──────┬───────┘ │
+│ ┌────────────────┐ │ │ ┌────────────────────────────────────┐ │
+│ │ PostgreSQL │ │ │ │ CreditFlowYieldVault (TEAL) │ │
+│ │ │ │ │ │ ARC-56 Application Contract │ │
+│ │ companies │ │ │ │ • Deposit (unclaimed credits) │ │
+│ │ teams │ │ │ │ • Accrue yield │ │
+│ │ employees │ │ │ │ • Distribute yield (split) │ │
+│ │ allocations │ │ │ │ • Reclaim principal │ │
+│ │ transactions │ │ │ └───────────┬────────────────────────┘ │
+│ │ payment_recs │ │ │ │ │
+│ │ yield_accounts│ │ │ ┌───────────▼────────────────────────┐ │
+│ │ │ │ │ │ USDC ASA (ID: 31566704) │ │
+│ │ Auth (RLS) │ │ │ │ x402 payment asset │ │
+│ └────────────────┘ │ │ └────────────────────────────────────┘ │
 │ │ │ │
-│ ┌──────▼───────┐ ┌──────▼───────┐ │
-│ │ Frontend │ │ Yield Vault │ │
-│ │ Stores │ │ Contract │ │
-│ │ (Zustand) │ │ (Puya-TS) │ │
-│ └──────────────┘ └──────────────┘ │
+│ ┌────────────────┐ │ │ ┌────────────────────────────────────┐ │
+│ │ Realtime │ │ │ │ Algorand Indexer │ │
+│ │ Subscriptions │ │ │ │ • Balance queries │ │
+│ └────────────────┘ │ │ │ • Asset holdings │ │
+│ │ │ │ • Transaction lookups │ │
+│ ┌────────────────┐ │ │ └────────────────────────────────────┘ │
+│ │ Edge Functions │ │ │ │
+│ │ (optional) │ │ │ ┌────────────────────────────────────┐ │
+│ └────────────────┘ │ │ │ Circle Faucet (Testnet) │ │
+│ │ │ │ USDC + ALGO test funding │ │
+│ │ │ └────────────────────────────────────┘ │
+└──────────────────────┘ └──────────────────────────────────────────┘
+```
+
+---
+
+## Data Model
+
+```
+company
+ │
+ ├─── team(s)
+ │ │
+ │ └─── employee(s) ──────────────────────┐
+ │ │
+ └─── allocation(s) ◄───────────────────────────┘
+ │
+ ├─── transaction(s)
+ │ (allocate / claim / yield_accrue / yield_distribute / reclaim / adjust)
+ │
+ └─── yield_account(s)
+ (principal, yield_generated, company_share, employee_share)
+```
+
+### Core Entities
+
+| Entity | Purpose |
+|---|---|
+| `companies` | Top-level org. Each has a wallet address, x402 config, credit pool, yield toggle. |
+| `teams` | Sub-groups under a company, each with a manager and a team budget pool. |
+| `employees` | Individuals with a role, wallet address, and allocation status. |
+| `allocations` | Periodic credit buckets (start/end dates, total/claimed/unclaimed/yield_eligible). |
+| `transactions` | Immutable audit log of every credit movement. |
+| `yield_accounts` | Per-allocation yield positions tracking principal, accrued yield, and share split. |
+| `payment_records` | x402 payment receipts linked to allocations. |
+
+### Allocation Lifecycle
+
+```
+active ──► suspended ──► terminated
+ │ (pause) (close)
+ │
+ └── credits flow: total_credits → claimed_credits + unclaimed_credits
+ unclaimed_credits → yield_eligible_balance (if yield enabled)
+```
+
+---
+
+## Key User Flows
+
+### Flow 1: Credit Allocation (Admin → Employee)
+
+```
+Manager creates allocation
+ │
+ ├─► INSERT into allocations (status: 'active')
+ │ total_credits = X
+ │ claimed_credits = 0
+ │ unclaimed_credits = X
+ │ yield_eligible_balance = 0
+ │
+ ├─► INSERT into transactions (type: 'allocate')
+ │
+ └─► Employee sees credits on Dashboard
+```
+
+### Flow 2: Employee Claims Credits → x402 Payment
+
+```
+Employee views available credits
+ │
+ ├─► Frontend calls backend to create x402 payment requirement
+ │ (amount, recipient, resource URL)
+ │
+ ├─► Backend returns 402 + X-Payment-Required header
+ │ scheme: 'exact'
+ │ network: 'algorand:testnet'
+ │ maxAmountRequired: <micro-USDC>
+ │ payTo: <company wallet>
+ │
+ ├─► Frontend builds Algorand ASA transfer txn
+ │ (USDC asset ID 31566704, micro-USDC amount)
+ │
+ ├─► Wallet (Lute/KMD/WalletConnect) signs transaction group
+ │
+ ├─► Frontend submits signed transaction to Algorand
+ │
+ ├─► Frontend sends tx hash to backend /settle endpoint
+ │
+ ├─► Backend confirms on-chain via Indexer
+ │ (verifies transfer from employee → company wallet)
+ │
+ ├─► Backend updates allocation:
+ │ claimed_credits += amount
+ │ unclaimed_credits -= amount
+ │
+ ├─► INSERT into transactions (type: 'claim')
+ │
+ └─► INSERT into payment_records (status: 'confirmed')
+```
+
+### Flow 3: Yield Generation (Unclaimed Credits → Yield Vault)
+
+```
+Company enables yield on allocation
+ │
+ ├─► Periodically (or on-demand):
+ │
+ │ yield_accrue job:
+ │ ├─► Calculate yield on yield_eligible_balance
+ │ │ (using configured APY and time elapsed)
+ │ │
+ │ ├─► INSERT into transactions (type: 'yield_accrue')
+ │ │
+ │ └─► UPDATE yield_accounts:
+ │ yield_generated += calculated yield
+ │ company_share = yield_generated * company_split%
+ │ employee_share = yield_generated * employee_split%
+ │ last_calculated_at = now
+ │
+ ├─► On-chain (CreditFlowYieldVault):
+ │ • Deposit function accepts ASA (USDC) transfers
+ │ • Tracks per-depositor principal and yield
+ │ • Uses Algorand's native yield-bearing mechanisms
+ │ • ARC-56 ABI exposes: deposit, accrue, distribute, reclaim
+ │
+ └─► yield_distribute:
+ ├─► Moves accrued yield from vault to company + employee wallets
+ ├─► INSERT into transactions (type: 'yield_distribute')
+ └─► UPDATE yield_accounts:
+ yield_generated -= distributed amount
+ last_calculated_at = now
+```
+
+### Flow 4: Wallet Funding (Testnet Faucet)
+
+```
+User opens app, wallet is empty
+ │
+ ├─► Check ALGO balance via Algorand Indexer
+ │ if < 0.01 ALGO → request from public testnet faucet
+ │
+ ├─► Check USDC balance
+ │ if 0 USDC → request from Circle testnet faucet
+ │ (requires VITE_CIRCLE_API_KEY, address opted into ASA 31566704)
+ │
+ └─► Wallet ready for x402 transactions
+```
+
+---
+
+## Request Lifecycle: x402 Payment End-to-End
+
+```
+┌──────┐ 1. GET /api/protected-resource ┌─────────────┐
+│Client│ ──────────────────────────────────► │ Backend │
+│ │ │ (Express) │
+└──────┘ └──────┬──────┘
+ │
+ │ 2. 402 + X-Payment-Required
+ │ scheme: exact
+ │ network: algorand:testnet
+ │ payTo: company wallet
+ │ amount: <USD amount>
+ │
+ ▼
+┌──────┐ 3. Build payment requirement ┌─────────────┐
+│Client│ ◄────────────────────────────────── │ Frontend │
+│ │ │ (x402.ts) │
+└──────┘ └──────┬──────┘
+ │
+ │ 4. Build ASA transfer txn
+ │ (algorandPayment.ts)
+ │ • from: employee address
+ │ • to: company address
+ │ • asset: USDC
+ │ • amount: micro-USDC
+ │
+ ▼
+┌──────┐ 5. Wallet signs txn group ┌─────────────┐
+│Wallet│ ◄────────────────────────────────── │ Frontend │
+│(Lute)│ │ (UI prompt)│
+└──┬───┘ └──────┬──────┘
+ │ │
+ │ 6. Signed txn bytes │
+ │ │
+ ▼ ▼
+┌──────┐ 7. Submit to Algorand ┌─────────────┐
+│Client│ ──────────────────────────────────► │ Algorand │
+│ │ (via algod RPC) │ Testnet │
+└──┬───┘ └──────┬──────┘
+ │ │
+ │ 8. Tx hash returned │
+ │ │
+ ▼ ▼
+┌──────┐ 9. POST /api/settle ┌─────────────┐
+│Client│ ──────────────────────────────────► │ Backend │
+│ │ { txHash } │ │
+└──┬───┘ └──────┬──────┘
+ │ │
+ │ 10. Backend queries Indexer to confirm │
+ │ transfer on-chain │
+ │ │
+ │ 11. Backend updates DB │
+ │ • allocation.claimed_credits += amount │
+ │ • allocation.unclaimed_credits -= amount │
+ │ • INSERT transaction record │
+ │ • INSERT payment_record (confirmed) │
+ │ │
+ ▼ ▼
+┌──────┐ 12. 200 OK + protected resource ┌─────────────┐
+│Client│ ◄────────────────────────────────── │ Backend │
+│ │ │ │
+└──────┘ └─────────────┘
+```
+
+---
+
+## Smart Contract: CreditFlowYieldVault
+
+### Contract State
+
+```
+Global State:
+ • app_admin (bytes) — contract deployer
+ • usdc_asset_id (uint64) — ASA ID for USDC
+ • total_deposits (uint64) — total USDC deposited across all users
+ • total_yield (uint64) — total yield generated
+ • yield_rate (uint64) — configured APY (basis points)
+
+Per-Account Local State (per depositor):
+ • principal (uint64) — deposited USDC
+ • yield_earned (uint64) — yield accumulated for this account
+ • last_accrue_block (uint64) — block of last yield calculation
+ • status (uint64) — 0=inactive, 1=active, 2=withdrawn
+```
+
+### ABI Methods (ARC-56)
+
+| Method | Signature | Purpose |
+|---|---|---|
+| `deposit` | `deposit(account: axfer, amount: uint64)` | Deposit USDC into the vault |
+| `accrue_yield` | `accrue_yield(account: appl, amount: uint64)` | Accrue yield on an account |
+| `distribute` | `distribute(account: appl, to_company: address, to_employee: address, amount: uint64)` | Distribute yield split |
+| `reclaim` | `reclaim(account: appl, amount: uint64)` | Reclaim principal |
+
+---
+
+## Environment Configuration
+
+### Required Variables
+
+```bash
+# Supabase
+VITE_SUPABASE_URL=<project-url>
+VITE_SUPABASE_ANON_KEY=<anon-key>
+
+# Algorand Network
+VITE_ALGORAND_NETWORK=testnet # mainnet | testnet | localnet
+VITE_ALGOD_SERVER=https://testnet-api.4160.nodely.dev
+VITE_ALGOD_PORT=443
+VITE_ALGOD_TOKEN=<algod-api-token>
+VITE_INDEXER_SERVER=https://testnet-idx.4160.nodely.dev
+VITE_INDEXER_PORT=443
+VITE_INDEXER_TOKEN=<indexer-api-token>
+
+# x402 Configuration
+VITE_X402_FACILITATOR_URL=<facilitator-endpoint>
+VITE_X402_SETTLE_ENDPOINT=/api/x402/settle
+
+# Yield Vault (Smart Contract)
+VITE_YIELD_VAULT_APP_ID=<deployed-app-id>
+
+# Circle Faucet (Testnet only)
+VITE_CIRCLE_API_KEY=<circle-developer-api-key>
+
+# Circle CCTP (cross-chain transfers, optional)
+VITE_CIRCLE_CCTP_DOMAIN=<domain-token>
+```
+
+### x402 Configuration per Company
+
+Each company row has an `x402_config` JSON column:
+```json
+{
+ "facilitator_url": "https://facilitator.example.com",
+ "settlement_url": "https://api.creditflow.io/x402/settle",
+ "network": "algorand:testnet",
+ "asset_id": "31566704",
+ "asset_decimals": 6,
+ "scheme": "exact"
+}
+```
+
+---
+
+## Tech Stack
+
+| Layer | Technology | Purpose |
+|---|---|---|
+| **Frontend** | React 19 + Vite 6 + TypeScript | SPA shell, routing, pages |
+| **State** | Zustand | Client-side state (allocation, auth, payment, yield) |
+| **UI** | Tailwind CSS v4 + shadcn/ui | Component library, styling |
+| **Blockchain SDK** | algosdk (npm) | Algorand transaction construction, signing, submission |
+| **Wallet** | use-wallet-react + Lute | Wallet connection, signing |
+| **Database** | Supabase (PostgreSQL) | Primary data store, auth (RLS), realtime |
+| **Backend** | Express.js | REST API, x402 endpoints, business logic |
+| **Smart Contract** | Algorand TEAL (ARC-56) | Yield vault application |
+| **Testnet Faucet** | Circle API + public faucets | USDC and ALGO funding for testing |
+| **Deployment** | Vercel | Frontend + backend hosting |
+
+---
+
+## Security Model
+
+### Row-Level Security (Supabase)
+- All tables use RLS policies
+- Users can only access data belonging to their company
+- `user_id` is derived from `auth.uid()` (Supabase Auth session)
+
+### x402 Payment Integrity
+1. Backend issues a **nonce** per payment requirement
+2. Frontend builds a **time-bounded authorization** (`validAfter`/`validBefore`)
+3. Wallet signs the **canonical byte representation** of the authorization
+4. Backend verifies the signature and checks on-chain settlement
+5. Payment record is **immutable** once confirmed
+
+### Yield Vault Security
+- Contract is **rekeyable** to a multisig (future: Gnosis Safe on Algorand)
+- Only `app_admin` can call `accrue_yield`
+- Deposit amounts validated against ASA holdings
+- Withdrawals use atomic transfer groups to prevent reentrancy
+
+---
+
+## File Structure Reference
+
+```
+Chudgaye/
+├── AGENTS.md # Project agent guide (skills, MCP tools, workflows)
+├── CLAUDE.md # AI coding assistant instructions
+├── ARCHITECTURE.md # This document
+├── README.md # Project overview
+├── STATUS.md # Development status tracking
+│
+├── contracts/ # Algorand smart contracts
+│ ├── artifacts/
+│ │ ├── CreditFlowYieldVault.approval.teal # Approval program
+│ │ ├── CreditFlowYieldVault.clear.teal # Clear program
+│ │ ├── CreditFlowYieldVault.arc32.json # ARC-32 metadata
+│ │ └── CreditFlowYieldVault.arc56.json # ARC-56 ABI
+│ └── src/ # Contract source (PyTeal / Reach)
+│
+├── app/ # Frontend application
+│ ├── src/
+│ │ ├── pages/
+│ │ │ ├── Dashboard.tsx # Overview stats, recent activity
+│ │ │ ├── Companies.tsx # Company management (super admin)
+│ │ │ ├── Teams.tsx # Team CRUD within a company
+│ │ │ ├── Employees.tsx # Employee management
+│ │ │ ├── Allocations.tsx # Credit allocation management
+│ │ │ ├── Claims.tsx # x402 payment flow / faucet
+│ │ │ ├── Apps.tsx # Service provider apps
+│ │ │ └── Login.tsx # Auth entry point
+│ │ ├── stores/ # Zustand state management
+│ │ │ ├── authStore.ts # Auth session, user role
+│ │ │ ├── allocationStore.ts # Allocation CRUD, claim logic
+│ │ │ ├── paymentStore.ts # x402 payment state
+│ │ │ └── yieldStore.ts # Yield account tracking
+│ │ ├── components/
+│ │ │ ├── AppCalls.tsx # Reusable Algorand app call UI
+│ │ │ ├── Navbar.tsx # Navigation, user menu
+│ │ │ └── ProtectedRoute.tsx # Route guard by role
+│ │ ├── services/
+│ │ │ ├── supabase.ts # Supabase client init
+│ │ │ ├── x402.ts # X402Service class + singleton
+│ │ │ └── circleFaucet.ts # Circle USDC + ALGO testnet faucets
+│ │ ├── utils/
+│ │ │ ├── algorand.ts # Network config, client factory
+│ │ │ ├── algorandPayment.ts # Tx construction, signing, payload
+│ │ │ ├── algorandBalance.ts # ALGO + USDC balance queries
+│ │ │ └── x402.ts # x402 requirement building
+│ │ ├── lib/
+│ │ │ ├── supabase.ts # Supabase helper functions
+│ │ │ └── types.ts # Shared TypeScript types
+│ │ ├── styles/
+│ │ │ └── globals.css # Global CSS, Tailwind imports
+│ │ ├── App.tsx # Root component, routing
+│ │ └── main.tsx # Vite entry point
+│ ├── .env.testnet.example # Example environment variables
+│ └── package.json # Frontend dependencies
+│
+├── server/ # Express.js backend API
+│ ├── src/
+│ │ ├── routes/
+│ │ │ ├── companies.ts
+│ │ │ ├── teams.ts
+│ │ │ ├── employees.ts
+│ │ │ ├── allocations.ts
+│ │ │ ├── transactions.ts
+│ │ │ └── x402.ts # /require, /settle endpoints
+│ │ ├── middleware/
+│ │ │ ├── auth.ts # Supabase JWT verification
+│ │ │ └── companyScope.ts # Enforce company-level access
+│ │ ├── services/
+│ │ │ ├── x402Service.ts # 402 generation, settlement validation
+│ │ │ ├── allocationService.ts # Allocation business logic
+│ │ │ └── yieldService.ts # Yield calculation, distribution
+│ │ ├── lib/
+│ │ │ └── supabase.ts # Admin Supabase client
+│ │ └── index.ts # Server entry point
+│ └── package.json
+│
+├── subscriber/ # Algorand realtime subscriber
+│ └── index.ts # Watches app calls, updates DB
+│
+├── supabase/ # Database migrations
+│ └── migrations/
+│ ├── 20240101000000_create_companies.sql
+│ ├── 20240101000001_create_teams.sql
+│ ├── 20240101000002_create_employees.sql
+│ ├── 20240101000003_create_allocations.sql
+│ ├── 20240101000004_create_transactions.sql
+│ ├── 20240101000005_create_payment_records.sql
+│ └── 20240101000006_create_yield_accounts.sql
+│
+├── lib/ # Shared libraries
+│ └── wagmi-config.ts # Wallet connection config
+│
+├── node_modules/ # Dependencies
+└── package.json # Root workspace config
+```
+
+---
+
+## Component Diagram (Detailed)
+
+### Frontend Layer
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ App.tsx (Root Router) │
 │ │
-└─────────────────────────────────────────────────────────────┘
+│ ┌───────────────┐ ┌────────────────┐ ┌──────────────────┐ │
+│ │ Login │ │ Dashboard │ │ Companies │ │
+│ │ (auth gate) │ │ (stats) │ │ (super_admin) │ │
+│ └───────┬───────┘ └───────┬────────┘ └────────┬─────────┘ │
+│ │ │ │ │
+│ ┌───────▼───────┐ ┌───────▼────────┐ ┌────────▼─────────┐ │
+│ │ Teams │ │ Employees │ │ Allocations │ │
+│ │ (company_id) │ │ (company_id) │ │ (credit mgmt) │ │
+│ └───────┬───────┘ └───────┬────────┘ └────────┬─────────┘ │
+│ │ │ │ │
+│ ┌───────▼───────────────────▼─────────────────────▼──────────┐ │
+│ │ Claims (x402) │ │
+│ │ • Show unclaimed credits │ │
+│ │ • Build payment requirement │ │
+│ │ • Construct Algorand txn │ │
+│ │ • Prompt wallet signature │ │
+│ │ • Submit on-chain │ │
+│ │ • Faucet funding (Circle + ALGO) │ │
+│ └────────────────────────────────────────────────────────────┘ │
+│ │
+│ ┌─────────────────────────────────────────────────────────────┐ │
+│ │ Apps (Service Providers) │ │
+│ │ • Registered services per company │ │
+│ │ • x402 payment requirements │ │
+│ │ • Payment history │ │
+│ └─────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## 2. LAYER BREAKDOWN
-
-### Layer 1: Frontend (React + Vite + Tailwind)
-- Routing: React Router v7
-- State: Zustand (4 stores)
-- Wallet: @txnlab/use-wallet-react (Algorand)
-- HTTP: native fetch to Express API
-
-### Layer 2: Backend (Express + TypeScript)
-- REST API on port 3001
-- Supabase auth verification (JWT)
-- Business logic orchestration
-- x402 payment simulation & settlement
-- Yield calculation triggers
-
-### Layer 3: Database (Supabase / PostgreSQL)
-- 8 tables with RLS policies
-- Stored functions for yield calculation
-- Immutable transaction ledger
-
-### Layer 4: Blockchain (Algorand)
-- x402 payment settlement (HTTP 402 → Algorand tx)
-- Yield Vault smart contract (Puya-TS)
-- Box storage for per-company positions
-
-## 3. DATA MODEL
-
-### Companies
-```
-id (uuid) | name (text) | slug (text) | owner_id (uuid→auth.users)
-wallet_address (text) | x402_config (jsonb) | created_at (timestamptz)
-```
-
-### Teams
-```
-id (uuid) | company_id (uuid→companies) | name (text)
-manager_id (uuid→auth.users) | budget_pool (numeric) | created_at
-```
-
-### Employees
-```
-id (uuid) | company_id (uuid) | team_id (uuid→teams)
-name | email | role | wallet_address (text)
-status: active|suspended|terminated
-joined_at | terminated_at | created_at
-```
-
-### Allocations
-```
-id (uuid) | company_id | team_id | employee_id
-period_start | period_end
-total_credits | claimed_credits | unclaimed_credits
-yield_eligible_balance | status: active|suspended|terminated|expired
-```
-
-### Yield Accounts
-```
-id (uuid) | allocation_id | company_id | employee_id
-principal | yield_generated | company_share | employee_share
-strategy | apy | last_calculated_at
-```
-
-### Transactions (IMMUTABLE)
-```
-id (uuid) | allocation_id | company_id | team_id | employee_id
-type: allocate|claim|yield_accrue|yield_distribute|reclaim|adjust|x402_payment
-amount | from_entity | to_entity | tx_hash | metadata | created_at
-```
-
-### Payment Records (x402)
-```
-id (uuid) | allocation_id | company_id | employee_id
-service_id | service_name | amount | currency
-x402_tx_hash | status: pending|confirmed|failed|cancelled
-error_message | consumed_at | created_at
-```
-
-## 4. FRONTEND ARCHITECTURE
-
-### Routing
-```
-/ → Landing (public)
-/onboarding → Onboarding wizard (auth required, no company)
-/dashboard → Main dashboard (protected)
-/allocations → Allocation management (protected)
-/yield → Yield tracking (protected)
-/claims → x402 claims & consumption (protected)
-```
-
-### Zustand Stores
-```
-authStore → user, isAuthenticated, login, logout
-allocationStore → allocations[], claimCredits, createAllocation
-yieldStore → yieldAccounts[], calculateYield, distributeYield
-paymentStore → paymentRecords[], processPayment, retryPayment
-```
-
-### Key Pages
-- **Landing**: Hero, how-it-works, benefits, CTA
-- **Onboarding**: 5-step wizard (company → team → employees → budget → confirm)
-- **Dashboard**: Stats bar, team cards, employee table, recent transactions
-- **Allocations**: Table with claim/suspend/terminate actions, modal for new allocation
-- **Yield**: Summary cards, per-allocation breakdown, distribute button, risk notice
-- **Claims**: Balance overview, service selection modal, x402 payment flow, transaction history
-
-## 5. BACKEND API
+### State Stores Interaction
 
 ```
-GET /api/companies → Get current company
-POST /api/companies → Create company
-PATCH /api/companies/:id → Update company
-
-GET /api/teams → List teams
-POST /api/teams → Create team
-PATCH /api/teams/:id → Update team
-DELETE /api/teams/:id → Delete team
-
-GET /api/employees → List employees (filter by team/status)
-POST /api/employees → Add employee
-POST /api/employees/bulk → Bulk import CSV
-PATCH /api/employees/:id → Update employee
-DELETE /api/employees/:id → Terminate employee
-
-GET /api/allocations → List allocations (filters)
-POST /api/allocations → Create allocation + transaction
-POST /api/allocations/:id/claim → Claim credits (atomic)
-
-GET /api/yield → Get yield accounts
-POST /api/yield/calculate → Calculate yield for allocation
-POST /api/yield/distribute → Distribute yield (batch)
-
-GET /api/transactions → List transactions (filters)
-GET /api/transactions/summary → Aggregate by type
-
-POST /api/payments → Process x402 payment
-POST /api/payments/:id/retry → Retry failed payment
-```
-
-## 6. x402 PROTOCOL FLOW
-
-```
-1. Employee clicks "Claim Credits for Service"
-2. Frontend shows service options with prices
-3. Employee selects service + amount
-4. Frontend calls POST /api/payments with:
- { allocation_id, service_id, service_name, amount }
-5. Backend:
- a. Verifies allocation has sufficient unclaimed_credits
- b. Creates PaymentRecord with status='pending'
- c. Creates Transaction record (type='claim')
- d. Deducts from allocation.unclaimed_credits
- e. Constructs x402 payment payload
- f. Returns 402 with X-Payment-Required header
-6. Frontend wallet:
- a. Detects 402 response
- b. Prompts user to sign Algorand USDC transfer
- c. Submits signed payment back to backend
-7. Backend:
- a. Verifies signature on Algorand
- b. Confirms on-chain transaction
- c. Updates PaymentRecord.status = 'confirmed'
- d. Updates Transaction.tx_hash with on-chain tx ID
-8. Service delivers content/API response
-```
-
-## 7. YIELD MODEL (To be implemented later)
-
-```
-Eligibility:
- - Unclaimed credits allocated for > 7 days
- - Minimum $50 equivalent
- - Not during active claim processing
-
-Calculation:
- yield = principal × apy × (days / 365)
- company_share = yield × 0.7
- employee_share = yield × 0.3
-
-Distribution:
- - Daily accrual calculation (background job)
- - Monthly distribution to allocation balances
- - Simple interest (NOT compound) — legal safety
-
-Strategy:
- - Algorand yield-bearing tokens (Tinyman/Algofi)
- - 30-day rolling positions
- - Cap at protocol TVL limits
-
-Risk:
- - Variable APY disclosed in UI
- - Principal not guaranteed
- - Separate legal agreement for yield participation
-```
-
-## 8. SECURITY MODEL
-
-### Authentication
-- Supabase Auth (Google OAuth + email/password)
-- JWT in Authorization header
-- All API routes verify JWT before processing
-
-### Authorization
-- Company owner = authenticated user
-- RLS policies enforce data isolation
-- Teams visible only within company
-- Employees visible only within company
-
-### Financial Integrity
-- Immutable transaction ledger (INSERT-only)
-- Atomic allocation + transaction on create
-- Rollback on failure (delete transaction if allocation fails)
-- Balance checks before every claim
-
-### x402 Security
-- Nonce-based idempotency (allocation_id + service_id + nonce)
-- Signature verification on Algorand
-- Replay protection via nonce tracking
-- Time-windowed authorizations (5 min expiry)
-
-### Smart Contract Security
-- Admin-only functions (deposit, withdraw, updateApy)
-- Pause mechanism for emergencies
-- Balance validation before every state change
-- No reentrancy (TEAL is single-pass)
-
-## 9. DEPLOYMENT ARCHITECTURE
-
-```
-Production:
- ┌─────────────────┐ ┌──────────────────┐ ┌──────────────┐
- │ Vercel (SPA) │────►│ Render/ Fly.io │────►│ Supabase │
- │ Frontend │ │ Express API │ │ Database │
- └─────────────────┘ └────────┬─────────┘ └──────────────┘
+authStore
  │
- ┌──────▼──────┐
- │ Algorand │
- │ Mainnet │
- └─────────────┘
+ ├── session (Supabase auth session)
+ ├── user (profile, role, company_id)
+ └── login / logout methods
 
-Development:
- ┌─────────────────┐ ┌──────────────┐ ┌──────────────┐
- │ Vite Dev │────►│ Express │────►│ Supabase │
- │ Port 5173 │ │ Port 3001 │ │ Local/Dev │
- └─────────────────┘ └──────────────┘ └──────────────┘
+allocationStore
  │
- ┌──────▼──────┐
- │ Algorand │
- │ LocalNet │
- └─────────────┘
+ ├── allocations[] (fetched per company)
+ ├── fetchAllocations(companyId)
+ ├── createAllocation(data)
+ ├── claimCredits(id, amount) ──► inserts transaction, updates balances
+ └── getEmployeeBalance(employeeId)
+
+paymentStore
+ │
+ ├── paymentRecords[] (x402 receipts)
+ ├── pendingPayments[]
+ └── settlePayment(txHash)
+
+yieldStore
+ │
+ ├── yieldAccounts[] (per-allocation yield positions)
+ ├── fetchYieldAccounts(allocationId)
+ └── distributeYield(yieldAccountId)
 ```
 
-## 10. TECHNOLOGY STACK
+---
 
-| Component | Technology | Version |
-|-----------|-----------|---------|
-| Frontend | React + Vite + TypeScript | 19.0 / 6.2 |
-| Styling | Tailwind CSS | 4.0 |
-| State | Zustand | 5.0+ |
-| Routing | React Router | 7.18 |
-| Backend | Express + TypeScript | 5.0 |
-| Database | Supabase (PostgreSQL) | Latest |
-| Auth | Supabase Auth | Latest |
-| Blockchain | Algorand SDK | 3.7 |
-| Contracts | Puya-TS | 1.3 |
-| Wallet | @txnlab/use-wallet-react | 4.0 |
-| Icons | Lucide React | 1.45 |
+## Data Flow: Complete Credit Lifecycle
 
-## 11. CURRENT BUILD STATUS
+```
+ ┌──────────────┐
+ │ Allocation │
+ │ (periodic) │
+ └──────┬───────┘
+ │
+ ┌───────────┴────────────┐
+ │ │
+ ▼ ▼
+ ┌──────────────┐ ┌──────────────┐
+ │ Claimed │ │ Unclaimed │
+ │ Credits │ │ Credits │
+ └──────┬───────┘ └──────┬───────┘
+ │ │
+ │ x402 payment │ yield_eligible
+ │ (USDC transfer) │
+ ▼ ▼
+ ┌──────────────┐ ┌──────────────┐
+ │ Service │ │ Yield Vault │
+ │ Provider │ │ (Algorand) │
+ └──────────────┘ └──────┬───────┘
+ │
+ ┌───────┴───────┐
+ │ │
+ ▼ ▼
+ ┌──────────────┐ ┌──────────────┐
+ │ Company │ │ Employee │
+ │ Share │ │ Share │
+ └──────────────┘ └──────────────┘
+```
 
-| Component | Status | Notes |
-|-----------|--------|-------|
-| Smart Contract | ✅ Building | yield-vault.algo.ts compiles |
-| Database Schema | ✅ Complete | 8 tables + RLS + indexes + functions |
-| Backend API | ✅ Structure | Express routes for all entities |
-| Frontend Stores | ✅ Complete | 4 Zustand stores implemented |
-| Frontend Pages | 🔄 In Progress | Agent building pages |
-| x402 Layer | ✅ Service class | Payment negotiation & verification |
-| Landing Page | 🔄 In Progress | Agent building |
+---
 
-## 12. NEXT STEPS
+## Development Workflow
 
-1. Complete frontend pages (agent in progress)
-2. Wire up API client in frontend stores
-3. Implement x402 wallet integration flow
-4. Add yield calculation background job
-5. Deploy smart contract to testnet
-6. End-to-end testing
+### Prerequisites
+- Node.js 20+
+- Supabase CLI
+- Algorand sandbox or testnet node access
+- Lute wallet (browser extension)
+
+### Setup
+
+```bash
+# 1. Install dependencies
+npm install
+
+# 2. Configure environment
+cp app/.env.testnet.example app/.env
+# Edit with your Supabase, Algorand, and Circle credentials
+
+# 3. Set up Supabase
+supabase start
+supabase db reset # applies migrations
+
+# 4. Start development
+npm run dev # frontend (Vite) + backend (Express) concurrently
+```
+
+### Smart Contract Deployment
+
+```bash
+# Compile TEAL (if using Reach / custom compiler)
+cd contracts
+npm run build
+
+# Deploy to testnet
+npm run deploy:testnet
+
+# Update VITE_YIELD_VAULT_APP_ID in .env with the returned app ID
+```
+
+---
+
+## Glossary
+
+| Term | Meaning |
+|---|---|
+| **x402** | HTTP 402 Payment Required protocol — a standardized way for servers to request machine-readable payments |
+| **ASA** | Algorand Standard Asset — token on Algorand (USDC is ASA #31566704 on testnet) |
+| **Yield Vault** | Smart contract that accepts deposits and generates yield via Algorand's native mechanisms |
+| **ARC-56** | Algorand smart contract ABI standard — defines method signatures for frontend integration |
+| **Micro-USDC** | USDC represented in its smallest unit (1 USDC = 1,000,000 micro-USDC) |
+| **Lute** | Browser-based Algorand wallet with multi-account and Ledger support |
+| **Circle Faucet** | Circle's developer-controlled wallet API for dispensing test USDC |
+| **Indexer** | Algorand Indexer API — query blockchain state (balances, assets, transactions) |
+| **RLS** | Row-Level Security — PostgreSQL policies enforced by Supabase per user |
+
+---
+
+## Current Status
+
+See [STATUS.md](./STATUS.md) for the latest implementation status of each component.
+
+**Completed:**
+- Supabase schema with RLS
+- Company/Team/Employee CRUD
+- Allocation management with claim flow
+- x402 payment protocol implementation
+- Algorand wallet integration (Lute)
+- Circle USDC faucet integration
+- Yield vault smart contract (TEAL + ARC-56 ABI)
+- Zustand state management
+
+**In Progress / Planned:**
+- Backend x402 /settle endpoint validation
+- On-chain yield accrual automation
+- Real-time subscriber for on-chain events
+- Production deployment hardening
+- Multi-sig governance for yield vault

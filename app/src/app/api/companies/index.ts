@@ -1,4 +1,5 @@
-import type { Company, CreateCompanyInput, UpdateCompanyInput } from '@/app/api/companies'
+import type { Company, CreateCompanyInput, UpdateCompanyInput } from '@/lib/types'
+export type { Company, CreateCompanyInput, UpdateCompanyInput }
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 

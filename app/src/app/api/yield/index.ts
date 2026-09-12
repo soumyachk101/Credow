@@ -1,4 +1,5 @@
-import type { YieldAccount, YieldCalculation, YieldDistribution } from '@/app/api/yield'
+import type { YieldAccount, YieldCalculation, YieldDistribution } from '@/lib/types'
+export type { YieldAccount, YieldCalculation, YieldDistribution }
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 

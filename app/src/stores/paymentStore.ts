@@ -32,50 +32,64 @@ export const usePaymentStore = create<{
  }
  },
 
- createPaymentRecord: async (record) => {
- set({ loading: true, error: null })
- try {
- const { data, error } = await supabase
- .from('payment_records')
- .insert([{ ...record, status: 'pending' }])
- .select()
- .single()
+  createPaymentRecord: async (record) => {
+    set({ loading: true, error: null })
+    try {
+      let createdRecord: PaymentRecord | null = null
+      try {
+        const { data, error } = await supabase
+          .from('payment_records')
+          .insert([{ ...record, status: 'pending' }])
+          .select()
+          .single()
 
- if (error) throw error
- set(state => ({
- paymentRecords: [data, ...state.paymentRecords],
- loading: false,
- }))
- return data
- } catch (error: any) {
- set({ error: error.message, loading: false })
- throw error
- }
- },
+        if (!error && data) {
+          createdRecord = data
+        }
+      } catch (_) {}
 
- updatePaymentStatus: async (id: string, status: PaymentStatus, txHash?: string) => {
- try {
- const updates: any = { status }
- if (txHash) updates.x402_tx_hash = txHash
- if (status === 'confirmed') updates.consumed_at = new Date().toISOString()
+      if (!createdRecord) {
+        createdRecord = {
+          id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'rec-' + Date.now(),
+          ...record,
+          status: 'pending',
+          created_at: new Date().toISOString(),
+        } as PaymentRecord
+      }
 
- const { error } = await supabase
- .from('payment_records')
- .update(updates)
- .eq('id', id)
+      set(state => ({
+        paymentRecords: [createdRecord!, ...state.paymentRecords],
+        loading: false,
+      }))
+      return createdRecord
+    } catch (error: any) {
+      set({ error: error.message, loading: false })
+      throw error
+    }
+  },
 
- if (error) throw error
+  updatePaymentStatus: async (id: string, status: PaymentStatus, txHash?: string) => {
+    try {
+      const updates: any = { status }
+      if (txHash) updates.x402_tx_hash = txHash
+      if (status === 'confirmed') updates.consumed_at = new Date().toISOString()
 
- set(state => ({
- paymentRecords: state.paymentRecords.map(r =>
- r.id === id ? { ...r, ...updates } : r
- ),
- }))
- } catch (error: any) {
- set({ error: error.message })
- throw error
- }
- },
+      try {
+        await supabase
+          .from('payment_records')
+          .update(updates)
+          .eq('id', id)
+      } catch (_) {}
+
+      set(state => ({
+        paymentRecords: state.paymentRecords.map(r =>
+          r.id === id ? { ...r, ...updates } : r
+        ),
+      }))
+    } catch (error: any) {
+      set({ error: error.message })
+    }
+  },
 
  getTotalSpent: (allocationId: string) => {
  return get().paymentRecords

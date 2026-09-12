@@ -1,295 +1,325 @@
 /**
- * x402 Payment Protocol Integration
- * Handles HTTP 402 payment requirement negotiation and settlement
+ * x402 Payment Protocol — Algorand exact scheme
+ *
+ * Real client that:
+ * 1. Fetches a URL → detects 402 Payment Required
+ * 2. Parses x402 payment requirements from the response
+ * 3. Builds a USDC transfer transaction on Algorand testnet
+ * 4. Signs with Lute wallet (use-wallet-react)
+ * 5. Submits to Algorand, polls for confirmation
+ * 6. Retries the original request with X-PAYMENT-SIGNATURE header
+ *
+ * Server: https://example.x402.goplausible.xyz
+ * Docs: https://github.com/coinbase/x402
  */
 
+import algosdk, { type Transaction } from 'algosdk'
+import { usdToMicroUsd } from '../utils/algorandPayment'
+
+// ── Types ────────────────────────────────────────────────────────────────────
+
 export interface X402PaymentRequirement {
- scheme: 'exact'
- network: 'algorand' | 'ethereum' | 'base' | 'solana'
- maxAmountRequired: string // in smallest units
- resource: string // URL of the resource
- description: string
- mimeType: string
- payTo: string // recipient address
- maxTimeoutSeconds: number
- assetId?: string // for Algorand ASA
- assetDecimals?: number
- chainId?: number // for EVM chains
+  x402Version: number
+  error?: string
+  resource?: { url: string; description?: string; mimeType?: string }
+  accepts: PaymentOption[]
+  extensions?: Record<string, any>
 }
 
 export interface X402PaymentPayload {
- x402Version: 1
- scheme: 'exact'
- network: string
- payload: {
- address: string // payer address
- signature: string // cryptographic signature
- authorization?: {
- from: string
- to: string
- value: string
- validBefore: number
- validAfter: number
- nonce: string
- }
- }
+  x402Version: number
+  scheme?: string
+  network?: string
+  payload?: any
+  accepts?: any[]
 }
 
-export interface PaymentVerificationResult {
- isValid: boolean
- payer?: string
- amount?: string
- txHash?: string
- error?: string
+export interface PaymentOption {
+  scheme: string
+  network: string
+  amount: string
+  asset: string
+  payTo: string
+  maxTimeoutSeconds: number
+  extra?: Record<string, any>
 }
 
-/**
- * x402 Service - Handles payment negotiation and verification
- */
+export interface X402PaymentResult {
+  success: boolean
+  txHash?: string
+  confirmedRound?: number
+  data?: any
+  error?: string
+  requiresFunding?: boolean
+  requiresOptIn?: boolean
+}
+
+// ── x402 service ─────────────────────────────────────────────────────────────
+
 export class X402Service {
- private readonly algodConfig: {
- server: string
- port: string | number
- token: string
- }
+  private readonly algod: algosdk.Algodv2
 
- constructor(config: {
- algodServer: string
- algodPort: string | number
- algodToken: string
- }) {
- this.algodConfig = {
- server: config.algodServer,
- port: config.algodPort,
- token: config.algodToken,
- }
- }
+  constructor(config: {
+    algodServer: string
+    algodPort: string | number
+    algodToken: string
+  }) {
+    this.algod = new algosdk.Algodv2(config.algodToken, config.algodServer, Number(config.algodPort))
+  }
 
- /**
- * Create a payment requirement for a service
- */
- createPaymentRequirement(params: {
- resource: string
- amount: number // in USD
- description: string
- mimeType: string
- recipientAddress: string
- }): X402PaymentRequirement {
- // Convert USD to micro-USDC (6 decimals)
- const maxAmountRequired = Math.floor(params.amount * 1_000_000).toString()
+  // -----------------------------------------------------------------------
+  // Core: fetch with automatic 402 → payment → retry
+  // -----------------------------------------------------------------------
 
- return {
- scheme: 'exact',
- network: 'algorand',
- maxAmountRequired,
- resource: params.resource,
- description: params.description,
- mimeType: params.mimeType,
- payTo: params.recipientAddress,
- maxTimeoutSeconds: 300,
- assetId: 31566704, // USDC on Algorand
- assetDecimals: 6,
- chainId: 4160, // Algorand chain ID
- }
- }
+  /**
+   * Make an HTTP request with automatic x402 payment handling.
+   *
+   * If the server returns 402, this method:
+   * 1. Parses the x402 requirements
+   * 2. Builds a USDC transfer for Algorand
+   * 3. Signs with Lute wallet via `signer` callback
+   * 4. Submits to Algorand, waits for confirmation
+   * 5. Retries the original request with payment proof header
+   */
+  async fetchWithPayment(params: {
+    url: string
+    options?: RequestInit
+    activeAddress: string
+    signer: (txns: any[], indices: number[]) => Promise<Uint8Array[]>
+    onStatus?: (msg: string) => void
+    getAlgodClient?: () => any
+  }): Promise<X402PaymentResult> {
+    try {
+      if (params.onStatus) params.onStatus('Requesting resource...')
+      const response = await fetch(params.url, params.options)
 
- /**
- * Verify an x402 payment payload
- */
- async verifyPayment(payload: X402PaymentPayload): Promise<PaymentVerificationResult> {
- try {
- // Step 1: Validate payload structure
- if (payload.x402Version !== 1 || payload.scheme !== 'exact') {
- return { isValid: false, error: 'Invalid payment scheme' }
- }
+      if (response.status !== 402) {
+        let data
+        try {
+          data = await response.json()
+        } catch {
+          data = { text: await response.text() }
+        }
+        return { success: true, data }
+      }
 
- // Step 2: Extract payment details
- const { address, authorization } = payload.payload
- if (!address || !authorization) {
- return { isValid: false, error: 'Missing payment authorization' }
- }
+      if (params.onStatus) params.onStatus('Payment required — parsing requirements...')
+      const requirements = await this.parse402Response(response)
 
- // Step 3: Verify authorization is not expired
- const now = Math.floor(Date.now() / 1000)
- if (authorization.validBefore < now) {
- return { isValid: false, error: 'Payment authorization expired' }
- }
- if (authorization.validAfter > now) {
- return { isValid: false, error: 'Payment authorization not yet valid' }
- }
+      if (!requirements) {
+        return { success: false, error: 'Could not parse x402 requirements from 402 response' }
+      }
 
- // Step 4: Verify address matches
- if (authorization.from !== address) {
- return { isValid: false, error: 'Address mismatch' }
- }
+      const avmReq = requirements.accepts.find(a => a.network.startsWith('algorand:'))
+      if (!avmReq) {
+        return {
+          success: false,
+          error: `No Algorand option. Networks: ${requirements.accepts.map(a => a.network).join(', ')}`,
+        }
+      }
 
- // Step 5: Verify signature (would use Algorand SDK in production)
- // const isValid = await verifyAlgorandSignature(address, authorization, signature)
- // For now, we'll simulate this check
- const isValid = await this.verifyAlgorandTransaction(
- authorization,
- payload.payload.signature
- )
+      if (params.onStatus) params.onStatus(`Building ${avmReq.amount} micro-USDC payment...`)
+      const paymentResult = await this.submitPayment(avmReq, params)
 
- if (!isValid) {
- return { isValid: false, error: 'Invalid signature' }
- }
+      if (!paymentResult.success) {
+        return paymentResult
+      }
 
- return {
- isValid: true,
- payer: authorization.from,
- amount: authorization.value,
- }
- } catch (error: any) {
- return { isValid: false, error: error.message }
- }
- }
+      if (params.onStatus) params.onStatus('Retrying with payment proof...')
+      const retryResult = await this.retryRequest(params.url, params.options, paymentResult.txHash!, avmReq, params.activeAddress)
 
- /**
- * Settle an x402 payment on-chain
- */
- async settlePayment(payload: X402PaymentPayload): Promise<{
- success: boolean
- txHash?: string
- error?: string
- }> {
- try {
- // Step 1: Verify payment first
- const verification = await this.verifyPayment(payload)
- if (!verification.isValid) {
- return { success: false, error: verification.error }
- }
+      if (retryResult.success) {
+        return {
+          success: true,
+          txHash: paymentResult.txHash,
+          confirmedRound: paymentResult.confirmedRound,
+          data: retryResult.data,
+        }
+      }
 
- // Step 2: Check for replay (nonce must be unique)
- // This would query the database to ensure this nonce hasn't been used
- // const isReplay = await checkNonce(payload.payload.authorization.nonce)
- // if (isReplay) return { success: false, error: 'Payment nonce already used' }
+      return { success: false, error: retryResult.error || 'Retry failed after payment' }
+    } catch (err: any) {
+      return { success: false, error: err.message || 'x402 flow failed' }
+    }
+  }
 
- // Step 3: Submit to Algorand network (atomic transfer)
- // const txHash = await submitAtomicTransfer({
- // from: payload.payload.address,
- // to: payload.payload.authorization.to,
- // amount: BigInt(payload.payload.authorization.value),
- // assetId: 31566704, // USDC
- // signature: payload.payload.signature,
- // })
+  // -----------------------------------------------------------------------
+  // Parse 402 response — handles both header and body formats
+  // -----------------------------------------------------------------------
 
- // Simulate transaction hash for MVP
- const txHash = this.generateMockTxHash()
+  private async parse402Response(response: Response): Promise<X402PaymentRequirement | null> {
+    // Header: X-PAYMENT-REQUIRED or PAYMENT-REQUIRED (base64-encoded JSON)
+    const header = response.headers.get('X-PAYMENT-REQUIRED') || response.headers.get('PAYMENT-REQUIRED')
+    if (header) {
+      try {
+        const decoded = JSON.parse(atob(header))
+        return decoded
+      } catch {
+        try { return JSON.parse(header) } catch { /* try body */ }
+      }
+    }
 
- return {
- success: true,
- txHash,
- }
- } catch (error: any) {
- return { success: false, error: error.message }
- }
- }
+    // Body: HTML with data-requirements attribute (goplausible format)
+    const text = await response.text()
 
- /**
- * Verify Algorand transaction signature
- */
- private async verifyAlgorandTransaction(
- authorization: {
- from: string
- to: string
- value: string
- validBefore: number
- validAfter: number
- nonce: string
- },
- signature: string
- ): Promise<boolean> {
- // In production, this would:
- // 1. Construct the message hash from authorization fields
- // 2. Use Algorand SDK to verify the signature against the address
- // 3. Return true if valid, false otherwise
+    // Try JSON body first
+    try { return JSON.parse(text) } catch { /* try HTML */ }
 
- // For MVP, we'll do basic validation
- const requiredFields = ['from', 'to', 'value', 'validBefore', 'validAfter', 'nonce']
- const hasAllFields = requiredFields.every(field => authorization[field as keyof typeof authorization])
- const hasSignature = signature && signature.length > 0
+    // Parse data-requirements from HTML
+    const match = text.match(/data-requirements="([^"]+)"/)
+    if (match) {
+      try {
+        return JSON.parse(match[1])
+      } catch {
+        // HTML-escaped JSON
+        try {
+          const unescaped = match[1].replace(/&quot;/g, '"').replace(/\\&quot;/g, '"')
+          return JSON.parse(unescaped)
+        } catch { return null }
+      }
+    }
 
- return hasAllFields && hasSignature
- }
+    return null
+  }
 
- /**
- * Generate a mock transaction hash
- */
- private generateMockTxHash(): string {
- const chars = '0123456789ABCDEF'
- let hash = ''
- for (let i = 0; i < 64; i++) {
- hash += chars[Math.floor(Math.random() * chars.length)]
- }
- return hash
- }
+  // -----------------------------------------------------------------------
+  // Build, sign, submit, confirm payment
+  // -----------------------------------------------------------------------
 
- /**
- * Create a payment payload for an API service
- */
- createPaymentPayload(params: {
- fromAddress: string
- toAddress: string
- amount: number // in USD
- nonce: string
- }): X402PaymentPayload {
- const now = Math.floor(Date.now() / 1000)
- const amountMicro = Math.floor(params.amount * 1_000_000)
+  private async submitPayment(req: PaymentOption, params: {
+    url: string
+    activeAddress: string
+    signer: (txns: any[], indices: number[]) => Promise<Uint8Array[]>
+    onStatus?: (msg: string) => void
+  }): Promise<X402PaymentResult> {
+    try {
+      const algod = this.algod
+      const suggested = await algod.getTransactionParams().do()
 
- return {
- x402Version: 1,
- scheme: 'exact',
- network: 'algorand',
- payload: {
- address: params.fromAddress,
- signature: '', // Would be signed by wallet
- authorization: {
- from: params.fromAddress,
- to: params.toAddress,
- value: amountMicro.toString(),
- validBefore: now + 300, // 5 minutes
- validAfter: now - 60, // valid from 1 min ago
- nonce: params.nonce,
- },
- },
- }
- }
+      const amountMicro = BigInt(req.amount)
+      const assetId = Number(req.asset)
 
- /**
- * Get supported networks
- */
- getSupportedNetworks(): Array<{
- name: string
- chainId: number
- currency: string
- explorer: string
- }> {
- return [
- {
- name: 'Algorand',
- chainId: 4160,
- currency: 'ALGO',
- explorer: 'https://algoexplorer.io',
- },
- {
- name: 'Ethereum',
- chainId: 1,
- currency: 'ETH',
- explorer: 'https://etherscan.io',
- },
- {
- name: 'Base',
- chainId: 8453,
- currency: 'ETH',
- explorer: 'https://basescan.org',
- },
- ]
- }
+      // Build ASA (USDC) transfer transaction
+      const txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+        sender: params.activeAddress,
+        receiver: req.payTo,
+        assetIndex: assetId,
+        amount: amountMicro,
+        suggestedParams: suggested,
+        note: new Uint8Array(Buffer.from(JSON.stringify({
+          endpoint: params.url,
+          network: req.network,
+          x402: true,
+        }))),
+      })
+
+      // Assign group ID
+      algosdk.assignGroupID([txn])
+
+      if (params.onStatus) params.onStatus('Awaiting wallet signature...')
+      const signedBytes = await params.signer([txn], [0])
+
+      if (params.onStatus) params.onStatus('Submitting to Algorand...')
+      const { txid } = await algod.sendRawTransaction(signedBytes[0]!).do()
+
+      if (params.onStatus) params.onStatus('Waiting for confirmation...')
+      const confirmedRound = await this.waitForConfirmation(txid, algod)
+
+      return { success: true, txHash: txid, confirmedRound }
+    } catch (err: any) {
+      const msg = err.message || ''
+      if (msg.includes('underflow') || msg.includes('balance') || msg.includes('AssetBalance')) {
+        return { success: false, error: 'Insufficient USDC balance. Use the faucet to fund your wallet.', requiresFunding: true }
+      }
+      if (msg.includes('opt') || msg.includes('AssetError')) {
+        return { success: false, error: 'Wallet not opted into USDC. Use the faucet to opt in.', requiresOptIn: true }
+      }
+      return { success: false, error: msg }
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Wait for on-chain confirmation
+  // -----------------------------------------------------------------------
+
+  private async waitForConfirmation(txid: string, algod: algosdk.Algodv2): Promise<number | undefined> {
+    try {
+      const confirmed = await algosdk.waitForConfirmation(algod, txid, 4)
+      return confirmed.confirmedRound ? Number(confirmed.confirmedRound) : undefined
+    } catch {
+      return undefined
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Retry original request with payment proof header
+  // -----------------------------------------------------------------------
+
+  private async retryRequest(
+    url: string,
+    options: RequestInit | undefined,
+    txHash: string,
+    req: PaymentOption,
+    payerAddress: string = ''
+  ): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+      const paymentPayload = {
+        x402Version: 2,
+        scheme: req.scheme,
+        network: req.network,
+        payload: {
+          address: payerAddress,
+          signature: txHash,
+          authorization: {
+            from: payerAddress,
+            to: req.payTo,
+            value: req.amount,
+            validBefore: Math.floor(Date.now() / 1000) + 300,
+            validAfter: Math.floor(Date.now() / 1000) - 60,
+            nonce: `x402-${Date.now()}`,
+            assetId: Number(req.asset),
+          },
+        },
+      }
+
+      const payloadB64 = btoa(JSON.stringify(paymentPayload))
+
+      const headers: Record<string, string> = {
+        'X-PAYMENT-SIGNATURE': payloadB64,
+      }
+      if (options?.headers) {
+        const existing = typeof options.headers === 'string' ? {} : { ...options.headers }
+        Object.assign(headers, existing)
+      }
+
+      const response = await fetch(url, { ...options, headers })
+
+      if (response.status === 402) {
+        return { success: false, error: 'Payment not accepted' }
+      }
+      if (!response.ok) {
+        return { success: false, error: `Server returned ${response.status}` }
+      }
+
+      let data
+      try {
+        data = await response.json()
+      } catch {
+        data = { text: await response.text() }
+      }
+      return { success: true, data }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  }
 }
+
+// ---------------------------------------------------------------------------
+// Singleton
+// ---------------------------------------------------------------------------
 
 export const x402Service = new X402Service({
- algodServer: import.meta.env.VITE_ALGOD_SERVER || 'http://localhost:4001',
- algodPort: import.meta.env.VITE_ALGOD_PORT || '4001',
- algodToken: import.meta.env.VITE_ALGOD_TOKEN || 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+  algodServer: import.meta.env.VITE_ALGOD_SERVER ?? 'https://testnet-api.4160.nodely.dev',
+  algodPort: import.meta.env.VITE_ALGOD_PORT ?? '443',
+  algodToken: import.meta.env.VITE_ALGOD_TOKEN ?? 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
 })

@@ -2,48 +2,32 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/authStore'
 import { useAllocationStore } from '@/stores/allocationStore'
-import { usePaymentStore } from '@/stores/paymentStore'
-import ProtectedRoute from '@/components/ProtectedRoute'
-import Navbar from '@/components/Navbar'
-import { Plus, Search, Play, Pause, X, CheckCircle2, XCircle } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { Plus, Search, Pause, Play, X } from 'lucide-react'
 
 const fmtCurrency = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(v)
-const statusBadge = (status: string) => {
- if (status === 'active') return 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300'
- if (status === 'suspended') return 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300'
- return 'bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300'
-}
 
 export default function Allocations() {
  const { user } = useAuthStore()
- const { allocations, fetchAllocations, createAllocation, updateAllocation, claimCredits } = useAllocationStore()
- const { createPaymentRecord } = usePaymentStore()
+ const { allocations, fetchAllocations, createAllocation, updateAllocation } = useAllocationStore()
  const [teams, setTeams] = useState<any[]>([])
  const [employees, setEmployees] = useState<any[]>([])
  const [loading, setLoading] = useState(true)
  const [showModal, setShowModal] = useState(false)
- const [showClaimModal, setShowClaimModal] = useState(false)
- const [selectedAllocation, setSelectedAllocation] = useState<any>(null)
  const [filterTeam, setFilterTeam] = useState('')
  const [filterStatus, setFilterStatus] = useState('')
  const [searchQuery, setSearchQuery] = useState('')
  const [formData, setFormData] = useState({ team_id: '', employee_id: '', period_start: '', period_end: '', total_credits: '' })
- const [claimAmount, setClaimAmount] = useState('')
- const [claimService, setClaimService] = useState('')
- const [claimLoading, setClaimLoading] = useState(false)
- const [claimError, setClaimError] = useState('')
- const [claimSuccess, setClaimSuccess] = useState('')
 
  useEffect(() => {
  if (!user?.company_id) return
+ const companyId = user.company_id
  const loadData = async () => {
  setLoading(true)
  try {
- await Promise.all([fetchAllocations(user.company_id)])
- const { data: t } = await supabase.from('teams').select('*').eq('company_id', user.company_id)
- setTeams(t || [])
- const { data: e } = await supabase.from('employees').select('*').eq('company_id', user.company_id)
- setEmployees(e || [])
+ await Promise.all([fetchAllocations(companyId)])
+ const { data: t } = await supabase.from('teams').select('*').eq('company_id', companyId); setTeams(t || [])
+ const { data: e } = await supabase.from('employees').select('*').eq('company_id', companyId); setEmployees(e || [])
  } catch (err) { console.error(err) }
  finally { setLoading(false) }
  }
@@ -68,31 +52,7 @@ export default function Allocations() {
  } catch (err) { console.error(err) }
  }
 
- const handleStatusChange = async (allocation: any, status: string) => {
- try { await updateAllocation(allocation.id, { status }) } catch (err) { console.error(err) }
- }
-
- const handleClaim = async () => {
- if (!selectedAllocation || !claimAmount) return
- const amount = parseFloat(claimAmount)
- if (isNaN(amount) || amount <= 0) { setClaimError('Please enter a valid amount'); return }
- if (amount > selectedAllocation.unclaimed_credits) { setClaimError('Insufficient unclaimed credits'); return }
- setClaimLoading(true)
- setClaimError('')
- setClaimSuccess('')
- try {
- await claimCredits(selectedAllocation.id, amount)
- if (claimService) {
- await createPaymentRecord({ allocation_id: selectedAllocation.id, service_id: claimService, amount, status: 'confirmed' })
- }
- setClaimSuccess('Successfully claimed ' + fmtCurrency(amount) + ' in credits')
- setClaimAmount('')
- setTimeout(() => { setShowClaimModal(false); setSelectedAllocation(null); setClaimSuccess(''); setClaimError('') }, 2000)
- } catch (err: any) { setClaimError(err.message || 'Failed to claim credits') }
- finally { setClaimLoading(false) }
- }
-
- const filteredAllocations = allocations.filter((a: any) => {
+ const filtered = allocations.filter((a: any) => {
  if (filterTeam && a.team_id !== filterTeam) return false
  if (filterStatus && a.status !== filterStatus) return false
  if (searchQuery) {
@@ -105,198 +65,205 @@ export default function Allocations() {
  })
 
  return (
- <ProtectedRoute>
- <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
- <Navbar />
- <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
- <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+ <div className="space-y-6">
+ <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
  <div>
- <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Credit Allocations</h1>
- <p className="text-gray-600 dark:text-slate-300 mt-1">Manage credit allocations across teams and employees</p>
+ <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-3xl font-semibold text-white tracking-tight" style={{ fontFamily: "'Instrument Serif', serif" }}>
+ Credit Allocations
+ </motion.h1>
+ <p className="text-white/40 mt-1 text-sm">Manage credit allocations across teams and employees</p>
  </div>
- <button onClick={() => setShowModal(true)} className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors">
+ <button onClick={() => setShowModal(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white text-black text-sm font-medium hover:bg-white/90 transition-colors">
  <Plus className="w-4 h-4" /> New Allocation
  </button>
  </div>
 
- <div className="bg-white dark:bg-slate-800/50 rounded-xl border border-gray-200 dark:border-slate-700/60 shadow-sm p-4 mb-6">
+ <div className="liquid-glass rounded-2xl p-4">
  <div className="flex flex-col sm:flex-row gap-3">
  <div className="flex-1 relative">
- <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
- <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search by name or email..." className="w-full pl-9 pr-4 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+ <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+ <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search by name or email..." className="w-full pl-9 pr-4 py-2 rounded-xl bg-white/5 border border-white/5 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-white/20" />
  </div>
  <div className="flex gap-2">
- <select value={filterTeam} onChange={e => setFilterTeam(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
- <option value="">All Teams</option>
- {teams.map((team: any) => <option key={team.id} value={team.id}>{team.name}</option>)}
+ <select value={filterTeam} onChange={e => setFilterTeam(e.target.value)} className="px-3 py-2 rounded-xl bg-white/5 border border-white/5 text-white text-sm focus:outline-none focus:border-white/20">
+ <option value="" className="bg-slate-900">All Teams</option>
+ {teams.map((team: any) => <option key={team.id} value={team.id} className="bg-slate-900">{team.name}</option>)}
  </select>
- <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
- <option value="">All Statuses</option>
- <option value="active">Active</option>
- <option value="suspended">Suspended</option>
- <option value="terminated">Terminated</option>
+ <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="px-3 py-2 rounded-xl bg-white/5 border border-white/5 text-white text-sm focus:outline-none focus:border-white/20">
+ <option value="" className="bg-slate-900">All Statuses</option>
+ <option value="active" className="bg-slate-900">Active</option>
+ <option value="suspended" className="bg-slate-900">Suspended</option>
+ <option value="terminated" className="bg-slate-900">Terminated</option>
  </select>
  </div>
  </div>
  </div>
 
- <div className="bg-white dark:bg-slate-800/50 rounded-xl border border-gray-200 dark:border-slate-700/60 shadow-sm overflow-hidden">
+ <div className="liquid-glass rounded-2xl overflow-hidden">
  {loading ? (
  <div className="flex items-center justify-center py-12">
- <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+ <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
  </div>
  ) : (
  <div className="overflow-x-auto">
  <table className="w-full">
- <thead className="bg-gray-50 dark:bg-slate-800/30">
- <tr>
- <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase">Employee</th>
- <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase">Team</th>
- <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase">Total</th>
- <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase">Claimed</th>
- <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase">Unclaimed</th>
- <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase">Status</th>
- <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase">Period</th>
- <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-slate-400 uppercase">Actions</th>
+ <thead>
+ <tr className="border-b border-white/5">
+ <th className="px-6 py-3 text-left text-xs font-medium text-white/30 uppercase">Employee</th>
+ <th className="px-6 py-3 text-left text-xs font-medium text-white/30 uppercase">Team</th>
+ <th className="px-6 py-3 text-left text-xs font-medium text-white/30 uppercase">Total</th>
+ <th className="px-6 py-3 text-left text-xs font-medium text-white/30 uppercase">Claimed</th>
+ <th className="px-6 py-3 text-left text-xs font-medium text-white/30 uppercase">Unclaimed</th>
+ <th className="px-6 py-3 text-left text-xs font-medium text-white/30 uppercase">Status</th>
+ <th className="px-6 py-3 text-left text-xs font-medium text-white/30 uppercase">Period</th>
+ <th className="px-6 py-3 text-right text-xs font-medium text-white/30 uppercase">Actions</th>
  </tr>
  </thead>
- <tbody className="divide-y divide-gray-200 dark:divide-slate-700/50">
- {filteredAllocations.map((allocation: any) => {
+ <tbody className="divide-y divide-white/5">
+ {filtered.map((allocation: any) => {
  const employee = employees.find((e: any) => e.id === allocation.employee_id)
  const team = teams.find((t: any) => t.id === allocation.team_id)
  const claimPct = allocation.total_credits > 0 ? (allocation.claimed_credits / allocation.total_credits) * 100 : 0
  return (
- <tr key={allocation.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/30">
+ <tr key={allocation.id} className="hover:bg-white/5 transition-colors">
  <td className="px-6 py-4">
  <div>
- <p className="text-sm font-medium text-gray-900 dark:text-white">{employee?.name || 'Unknown'}</p>
- <p className="text-xs text-gray-500 dark:text-slate-400">{employee?.email}</p>
+ <p className="text-sm text-white/90">{employee?.name || 'Unknown'}</p>
+ <p className="text-xs text-white/30">{employee?.email}</p>
  </div>
  </td>
- <td className="px-6 py-4 text-sm text-gray-600 dark:text-slate-300">{team?.name || '-'}</td>
- <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{fmtCurrency(allocation.total_credits)}</td>
+ <td className="px-6 py-4 text-sm text-white/60">{team?.name || '-'}</td>
+ <td className="px-6 py-4 text-sm text-white/90">{fmtCurrency(allocation.total_credits)}</td>
  <td className="px-6 py-4">
- <span className="text-sm text-gray-900 dark:text-white">{fmtCurrency(allocation.claimed_credits)}</span>
- <div className="w-16 bg-gray-200 dark:bg-slate-700 rounded-full h-1.5 mt-1">
- <div className="bg-green-500 h-1.5 rounded-full" style={{ width: Math.min(claimPct, 100) + '%' }} />
+ <span className="text-sm text-white/70">{fmtCurrency(allocation.claimed_credits)}</span>
+ <div className="w-16 h-1 rounded-full bg-white/10 mt-1">
+ <div className="h-1 rounded-full bg-white/40" style={{ width: Math.min(claimPct, 100) + '%' }} />
  </div>
  </td>
- <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">{fmtCurrency(allocation.unclaimed_credits)}</td>
+ <td className="px-6 py-4 text-sm text-white/80">{fmtCurrency(allocation.unclaimed_credits)}</td>
  <td className="px-6 py-4">
- <span className={'inline-flex px-2 py-1 text-xs font-medium rounded-full ' + statusBadge(allocation.status)}>{allocation.status}</span>
+ <span className={`inline-flex px-2 py-1 text-[10px] font-medium rounded-full capitalize ${allocation.status === 'active' ? 'bg-white/10 text-white/70' : allocation.status === 'suspended' ? 'bg-yellow-500/10 text-yellow-300' : 'bg-red-500/10 text-red-300'}`}>{allocation.status}</span>
  </td>
- <td className="px-6 py-4 text-sm text-gray-500 dark:text-slate-400">
+ <td className="px-6 py-4 text-xs text-white/40">
  {allocation.period_start ? new Date(allocation.period_start).toLocaleDateString() : '-'}
- {allocation.period_end ? ' - ' + new Date(allocation.period_end).toLocaleDateString() : ''}
+ {allocation.period_end ? ` - ${new Date(allocation.period_end).toLocaleDateString()}` : ''}
  </td>
  <td className="px-6 py-4">
- <div className="flex items-center justify-end gap-2">
- {allocation.unclaimed_credits > 0 && allocation.status === 'active' && (
- <button onClick={() => { setSelectedAllocation(allocation); setShowClaimModal(true) }} className="p-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded" title="Claim credits"><Play className="w-4 h-4" /></button>
- )}
+ <div className="flex items-center justify-end gap-1">
  {allocation.status === 'active' ? (
- <button onClick={() => handleStatusChange(allocation, 'suspended')} className="p-1 text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 rounded" title="Suspend"><Pause className="w-4 h-4" /></button>
+ <button onClick={() => updateAllocation(allocation.id, { status: 'suspended' })} className="p-1.5 rounded-lg hover:bg-white/5 text-white/50 hover:text-yellow-300 transition-colors" title="Suspend"><Pause className="w-4 h-4" /></button>
  ) : (
- <button onClick={() => handleStatusChange(allocation, 'active')} className="p-1 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20 rounded" title="Activate"><CheckCircle2 className="w-4 h-4" /></button>
+ <button onClick={() => updateAllocation(allocation.id, { status: 'active' })} className="p-1.5 rounded-lg hover:bg-white/5 text-white/50 hover:text-green-300 transition-colors" title="Activate"><Play className="w-4 h-4" /></button>
  )}
- <button onClick={() => handleStatusChange(allocation, 'terminated')} className="p-1 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded" title="Terminate"><X className="w-4 h-4" /></button>
+ <button onClick={() => updateAllocation(allocation.id, { status: 'terminated' })} className="p-1.5 rounded-lg hover:bg-white/5 text-white/50 hover:text-red-300 transition-colors" title="Terminate"><X className="w-4 h-4" /></button>
  </div>
  </td>
  </tr>
  )
  })}
- {filteredAllocations.length === 0 && (
- <tr><td colSpan={8} className="px-6 py-8 text-center text-sm text-gray-500 dark:text-slate-400">No allocations found. Create your first allocation.</td></tr>
+ {filtered.length === 0 && (
+ <tr><td colSpan={8} className="px-6 py-8 text-center text-sm text-white/30">No allocations found.</td></tr>
  )}
  </tbody>
  </table>
  </div>
  )}
  </div>
- </div>
 
  {showModal && (
- <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
- <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-xl max-w-md w-full">
- <div className="p-6 border-b border-gray-200 dark:border-slate-700">
- <h3 className="text-lg font-semibold text-gray-900 dark:text-white">New Allocation</h3>
- </div>
- <div className="p-6 space-y-4">
- <div>
- <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">Team</label>
- <select value={formData.team_id} onChange={e => setFormData(prev => ({ ...prev, team_id: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
- <option value="">Select team</option>
- {teams.map((team: any) => <option key={team.id} value={team.id}>{team.name}</option>)}
- </select>
- </div>
- <div>
- <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">Employee</label>
- <select value={formData.employee_id} onChange={e => setFormData(prev => ({ ...prev, employee_id: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
- <option value="">Select employee</option>
- {employees.map((emp: any) => <option key={emp.id} value={emp.id}>{emp.name} ({emp.email})</option>)}
- </select>
- </div>
- <div className="grid grid-cols-2 gap-3">
- <div>
- <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">Start Date</label>
- <input type="date" value={formData.period_start} onChange={e => setFormData(prev => ({ ...prev, period_start: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
- </div>
- <div>
- <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">End Date</label>
- <input type="date" value={formData.period_end} onChange={e => setFormData(prev => ({ ...prev, period_end: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
- </div>
- </div>
- <div>
- <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">Credit Amount ($)</label>
- <input type="number" value={formData.total_credits} onChange={e => setFormData(prev => ({ ...prev, total_credits: e.target.value }))} placeholder="0.00" min="0" step="0.01" className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
- </div>
- </div>
- <div className="p-6 border-t border-gray-200 dark:border-slate-700 flex justify-end gap-3">
- <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white">Cancel</button>
- <button onClick={handleCreateAllocation} disabled={!formData.team_id || !formData.employee_id || !formData.total_credits} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">Create Allocation</button>
- </div>
- </div>
- </div>
- </div>
- </div>
- )}
+ <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+ <div className="bg-slate-900 border border-white/10 rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
+ <div className="flex justify-between items-center pb-3 border-b border-white/10">
+ <h3 className="text-lg font-semibold text-white">New Allocation</h3>
+ <button onClick={() => setShowModal(false)} className="text-white/40 hover:text-white transition-colors">
+ <X className="w-5 h-5" />
+ </button>
  </div>
 
- {showClaimModal && selectedAllocation && (
- <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
- <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-xl max-w-md w-full">
- <div className="p-6 border-b border-gray-200 dark:border-slate-700">
- <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Claim Credits</h3>
- <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Available: {fmtCurrency(selectedAllocation.unclaimed_credits)}</p>
- </div>
- <div className="p-6 space-y-4">
+ <div className="space-y-3">
  <div>
- <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">Amount to Claim ($)</label>
- <input type="number" value={claimAmount} onChange={e => setClaimAmount(e.target.value)} placeholder="0.00" min="0" max={selectedAllocation.unclaimed_credits} step="0.01" className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
- </div>
- <div>
- <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">Service</label>
- <select value={claimService} onChange={e => setClaimService(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
- <option value="">Select service</option>
- <option value="api-service-1">API Service - Data Enrichment</option>
- <option value="api-service-2">API Service - Webhook Delivery</option>
- <option value="api-service-3">API Service - Batch Processing</option>
- <option value="custom">Custom Service</option>
+ <label className="block text-xs font-medium text-white/40 mb-1 uppercase tracking-wider">Team</label>
+ <select
+ value={formData.team_id}
+ onChange={e => setFormData(prev => ({ ...prev, team_id: e.target.value }))}
+ className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-white/20"
+ >
+ <option value="" className="bg-slate-900">Select team</option>
+ {teams.map((team: any) => (
+ <option key={team.id} value={team.id} className="bg-slate-900">{team.name}</option>
+ ))}
  </select>
  </div>
- {claimError && <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-lg"><p className="text-sm text-red-600 dark:text-red-400">{claimError}</p></div>}
- {claimSuccess && <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/50 rounded-lg flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" /><p className="text-sm text-green-600 dark:text-green-400">{claimSuccess}</p></div>}
+
+ <div>
+ <label className="block text-xs font-medium text-white/40 mb-1 uppercase tracking-wider">Employee</label>
+ <select
+ value={formData.employee_id}
+ onChange={e => setFormData(prev => ({ ...prev, employee_id: e.target.value }))}
+ className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-white/20"
+ >
+ <option value="" className="bg-slate-900">Select employee</option>
+ {employees.map((emp: any) => (
+ <option key={emp.id} value={emp.id} className="bg-slate-900">{emp.name} ({emp.email})</option>
+ ))}
+ </select>
  </div>
- <div className="p-6 border-t border-gray-200 dark:border-slate-700 flex justify-end gap-3">
- <button onClick={() => { setShowClaimModal(false); setSelectedAllocation(null); setClaimAmount(''); setClaimService(''); setClaimError(''); setClaimSuccess('') }} className="px-4 py-2 text-sm text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white">Cancel</button>
- <button onClick={handleClaim} disabled={!claimAmount || claimLoading} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">{claimLoading ? 'Processing...' : 'Claim Credits'}</button>
+
+ <div>
+ <label className="block text-xs font-medium text-white/40 mb-1 uppercase tracking-wider">Credit Amount ($)</label>
+ <input
+ type="number"
+ value={formData.total_credits}
+ onChange={e => setFormData(prev => ({ ...prev, total_credits: e.target.value }))}
+ placeholder="0.00"
+ min="0"
+ step="0.01"
+ className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-white/20"
+ />
+ </div>
+
+ <div className="grid grid-cols-2 gap-3">
+ <div>
+ <label className="block text-xs font-medium text-white/40 mb-1 uppercase tracking-wider">Start Date</label>
+ <input
+ type="date"
+ value={formData.period_start}
+ onChange={e => setFormData(prev => ({ ...prev, period_start: e.target.value }))}
+ className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-white/20"
+ />
+ </div>
+ <div>
+ <label className="block text-xs font-medium text-white/40 mb-1 uppercase tracking-wider">End Date</label>
+ <input
+ type="date"
+ value={formData.period_end}
+ onChange={e => setFormData(prev => ({ ...prev, period_end: e.target.value }))}
+ className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-white/20"
+ />
+ </div>
+ </div>
+ </div>
+
+ <div className="pt-4 border-t border-white/10 flex justify-end gap-2">
+ <button
+ type="button"
+ onClick={() => setShowModal(false)}
+ className="px-4 py-2 text-sm text-white/60 hover:text-white transition-colors"
+ >
+ Cancel
+ </button>
+ <button
+ type="button"
+ onClick={handleCreateAllocation}
+ disabled={!formData.team_id || !formData.employee_id || !formData.total_credits}
+ className="px-4 py-2 bg-white text-black text-sm font-medium rounded-xl hover:bg-white/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+ >
+ Create Allocation
+ </button>
  </div>
  </div>
  </div>
  )}
  </div>
- </div>
- </div>
- </ProtectedRoute>
  )
 }

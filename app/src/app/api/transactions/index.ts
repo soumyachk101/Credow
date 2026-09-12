@@ -1,4 +1,5 @@
-import type { Transaction, TransactionSummary, TransactionType } from '@/app/api/transactions'
+import type { Transaction, TransactionSummary, TransactionType } from '@/lib/types'
+export type { Transaction, TransactionSummary, TransactionType }
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 

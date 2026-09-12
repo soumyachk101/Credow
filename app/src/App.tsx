@@ -8,11 +8,9 @@ import {
 } from '@txnlab/use-wallet-react'
 import {
  WalletUIProvider,
- WalletButton,
  type Theme,
 } from '@txnlab/use-wallet-ui-react'
 import { getKmdConfigFromViteEnvironment, getNetwork } from './utils/algorand'
-import AppCalls from './components/AppCalls'
 import ProtectedRoute from './components/ProtectedRoute'
 import Navbar from './components/Navbar'
 import Landing from './pages/Landing'
@@ -21,6 +19,9 @@ import Dashboard from './pages/Dashboard'
 import Allocations from './pages/Allocations'
 import Yield from './pages/Yield'
 import Claims from './pages/Claims'
+import Companies from './pages/Companies'
+import Teams from './pages/Teams'
+import X402Demo from './pages/X402Demo'
 
 const network = getNetwork()
 const algodConfig = {
@@ -89,6 +90,7 @@ export default function App() {
  <Routes>
  <Route path="/" element={<Landing />} />
  <Route path="/onboarding" element={<Onboarding />} />
+
  <Route
  path="/dashboard"
  element={
@@ -97,22 +99,25 @@ export default function App() {
  </ProtectedRoute>
  }
  />
+
  <Route
  path="/allocations"
  element={
- <ProtectedRoute>
+ <ProtectedRoute allowedRoles={['company_owner', 'manager']}>
  <AllocationsPage />
  </ProtectedRoute>
  }
  />
+
  <Route
  path="/yield"
  element={
- <ProtectedRoute>
+ <ProtectedRoute allowedRoles={['company_owner', 'manager']}>
  <YieldPage />
  </ProtectedRoute>
  }
  />
+
  <Route
  path="/claims"
  element={
@@ -121,6 +126,26 @@ export default function App() {
  </ProtectedRoute>
  }
  />
+
+ <Route
+ path="/teams"
+ element={
+ <ProtectedRoute allowedRoles={['company_owner', 'manager']}>
+ <TeamsPage />
+ </ProtectedRoute>
+ }
+ />
+
+ <Route
+ path="/companies"
+ element={
+ <ProtectedRoute allowedRoles={['super_admin']}>
+ <CompaniesPage />
+ </ProtectedRoute>
+ }
+ />
+
+ <Route path="/x402-demo" element={<X402Demo />} />
  <Route path="*" element={<Navigate to="/" replace />} />
  </Routes>
  </BrowserRouter>
@@ -129,38 +154,73 @@ export default function App() {
  )
 }
 
+function PageShell({ children }: { children: React.ReactNode }) {
+ return (
+ <div className="min-h-screen bg-black">
+ <Navbar />
+ <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+ {children}
+ </div>
+ </div>
+ )
+}
+
 function DashboardPage() {
  return (
- <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
- <Navbar />
+ <ProtectedRoute>
+ <PageShell>
  <Dashboard />
- </div>
+ </PageShell>
+ </ProtectedRoute>
  )
 }
 
 function AllocationsPage() {
  return (
- <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
- <Navbar />
+ <ProtectedRoute allowedRoles={['company_owner', 'manager']}>
+ <PageShell>
  <Allocations />
- </div>
+ </PageShell>
+ </ProtectedRoute>
  )
 }
 
 function YieldPage() {
  return (
- <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
- <Navbar />
+ <ProtectedRoute allowedRoles={['company_owner', 'manager']}>
+ <PageShell>
  <Yield />
- </div>
+ </PageShell>
+ </ProtectedRoute>
  )
 }
 
 function ClaimsPage() {
  return (
- <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
- <Navbar />
+ <ProtectedRoute>
+ <PageShell>
  <Claims />
- </div>
+ </PageShell>
+ </ProtectedRoute>
+ )
+}
+
+function TeamsPage() {
+ return (
+ <ProtectedRoute allowedRoles={['company_owner', 'manager']}>
+ <PageShell>
+ <Teams />
+ </PageShell>
+ </ProtectedRoute>
+ )
+}
+
+function CompaniesPage() {
+ return (
+ <ProtectedRoute allowedRoles={['super_admin']}>
+ <PageShell>
+ <Companies />
+ </PageShell>
+ </ProtectedRoute>
  )
 }

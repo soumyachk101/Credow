@@ -1,4 +1,5 @@
-import type { Team, CreateTeamInput, UpdateTeamInput } from '@/app/api/teams'
+import type { Team, CreateTeamInput, UpdateTeamInput } from '@/lib/types'
+export type { Team, CreateTeamInput, UpdateTeamInput }
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 

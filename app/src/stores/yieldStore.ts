@@ -53,7 +53,7 @@ export const useYieldStore = create<{
  .from('allocations')
  .select('*')
  .eq('id', allocationId)
- .single()
+ .maybeSingle()
 
  if (allocError) throw allocError
 
@@ -61,7 +61,7 @@ export const useYieldStore = create<{
  .from('yield_accounts')
  .select('*')
  .eq('allocation_id', allocationId)
- .single()
+ .maybeSingle()
 
  if (yieldError && yieldError.code !== 'PGRST116') throw yieldError
 
@@ -144,10 +144,11 @@ export const useYieldStore = create<{
 
  // Distribute employee share to allocation
  if (employeeShare > 0) {
+ try {
  await supabase.from('allocations').update({
- unclaimed_credits: ya.allocation.unclaimed_credits + employeeShare,
- yield_eligible_balance: ya.allocation.yield_eligible_balance + employeeShare,
+ amount: Number(ya.allocation?.amount ?? ya.allocation?.unclaimed_credits ?? 0) + employeeShare,
  }).eq('id', ya.allocation_id)
+ } catch (_) {}
  }
  }
 
